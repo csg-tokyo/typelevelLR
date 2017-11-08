@@ -1,0 +1,6 @@
+
+syntax example4 (Start) {
+    simpleHello   : Start -> "hello"
+    helloWithName : Start -> "hello" Name
+    nameString    : Name  -> str
+}

@@ -1,0 +1,313 @@
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template< typename Head, typename... Tail >
+State< Head, Tail... >::State( Head const& head_, std::shared_ptr< State< Tail... > > const& tail_ )
+  :head( head_ ), tail( tail_ ) {}
+
+template< typename Head, typename... Tail >
+std::shared_ptr< State< Head, Tail... > > State< Head, Tail... >::make( Head const& head, std::shared_ptr< State< Tail... > > const& tail ) {
+  std::shared_ptr< State< Head, Tail... > > result( new State< Head, Tail... >( head, tail ) );
+  result->this_ = result;
+  return result;
+}
+
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::end() {
+  return end_transition( this_ );
+}
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::add() {
+  return add_transition( this_ );
+}
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::lp() {
+  return lp_transition( this_ );
+}
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::mul() {
+  return mul_transition( this_ );
+}
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::rp() {
+  return rp_transition( this_ );
+}
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::num( int const& value ) {
+  return num_transition( this_, value );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template< typename... Stack >
+auto end_transition( std::shared_ptr< State< Stack... > > const& src ) {
+  return reduce( src )->end();
+}
+
+template< typename... Stack >
+auto add_transition( std::shared_ptr< State< Stack... > > const& src ) {
+  return reduce( src )->add();
+}
+
+template< typename... Stack >
+auto lp_transition( std::shared_ptr< State< Stack... > > const& src ) {
+  return reduce( src )->lp();
+}
+
+template< typename... Stack >
+auto mul_transition( std::shared_ptr< State< Stack... > > const& src ) {
+  return reduce( src )->mul();
+}
+
+template< typename... Stack >
+auto rp_transition( std::shared_ptr< State< Stack... > > const& src ) {
+  return reduce( src )->rp();
+}
+
+template< typename... Stack >
+auto num_transition( std::shared_ptr< State< Stack... > > const& src, int const& value ) {
+  return reduce( src )->num();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// shift transitions
+
+template<>
+inline auto end_transition( std::shared_ptr< State< S1, S2 > > const& src ) {
+  return src->head.content;
+}
+
+template< typename... Tail >
+auto add_transition( std::shared_ptr< State< S1, Tail... > > const& src ) {
+  return State< S5, S1, Tail... >::make( S5(), src );
+}
+
+
+template< typename... Tail >
+auto lp_transition( std::shared_ptr< State< S2, Tail... > > const& src ) {
+  return State< S4, S2, Tail... >::make( S4(), src );
+}
+
+template< typename... Tail >
+auto num_transition( std::shared_ptr< State< S2, Tail... > > const& src, int const& value ) {
+  return State< S8, S2, Tail... >::make( S8( value ), src );
+}
+
+
+template< typename... Tail >
+auto mul_transition( std::shared_ptr< State< S3, Tail... > > const& src ) {
+  return State< S9, S3, Tail... >::make( S9(), src );
+}
+
+
+template< typename... Tail >
+auto lp_transition( std::shared_ptr< State< S4, Tail... > > const& src ) {
+  return State< S4, S4, Tail... >::make( S4(), src );
+}
+
+template< typename... Tail >
+auto num_transition( std::shared_ptr< State< S4, Tail... > > const& src, int const& value ) {
+  return State< S8, S4, Tail... >::make( S8( value ), src );
+}
+
+
+template< typename... Tail >
+auto lp_transition( std::shared_ptr< State< S5, Tail... > > const& src ) {
+  return State< S4, S5, Tail... >::make( S4(), src );
+}
+
+template< typename... Tail >
+auto num_transition( std::shared_ptr< State< S5, Tail... > > const& src, int const& value ) {
+  return State< S8, S5, Tail... >::make( S8( value ), src );
+}
+
+
+template< typename... Tail >
+auto add_transition( std::shared_ptr< State< S6, Tail... > > const& src ) {
+  return State< S5, S6, Tail... >::make( S5(), src );
+}
+
+template< typename... Tail >
+auto rp_transition( std::shared_ptr< State< S6, Tail... > > const& src ) {
+  return State< S10, S6, Tail... >::make( S10(), src );
+}
+
+
+template< typename... Tail >
+auto mul_transition( std::shared_ptr< State< S7, Tail... > > const& src ) {
+  return State< S9, S7, Tail... >::make( S9(), src );
+}
+
+
+template< typename... Tail >
+auto lp_transition( std::shared_ptr< State< S9, Tail... > > const& src ) {
+  return State< S4, S9, Tail... >::make( S4(), src );
+}
+
+template< typename... Tail >
+auto num_transition( std::shared_ptr< State< S9, Tail... > > const& src, int const& value ) {
+  return State< S8, S9, Tail... >::make( S8( value ), src );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// reduces
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S3, S5, S1, S2, Tail... > > const& src ) {
+  std::shared_ptr< E > const& arg1 = src->tail->tail->head.content;
+  std::shared_ptr< T > const& arg2 = src->head.content;
+  std::shared_ptr< E > content( new Add( arg1, arg2 ) );
+  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S1, S2, Tail... >::make( S1( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S7, S2, Tail... > > const& src ) {
+  std::shared_ptr< T > const& arg1 = src->head.content;
+  std::shared_ptr< E > content( new TToE( arg1 ) );
+  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail;
+  return State< S1, S2, Tail... >::make( S1( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S8, S2, Tail... > > const& src ) {
+  int const& arg1 = src->head.content;
+  std::shared_ptr< F > content( new Num( arg1 ) );
+  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail;
+  return State< S11, S2, Tail... >::make( S11( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S10, S6, S4, S2, Tail... > > const& src ) {
+  std::shared_ptr< E > const& arg1 = src->tail->head.content;
+  std::shared_ptr< F > content( new Paren( arg1 ) );
+  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S11, S2, Tail... >::make( S11( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S11, S2, Tail... > > const& src ) {
+  std::shared_ptr< F > const& arg1 = src->head.content;
+  std::shared_ptr< T > content( new FToT( arg1 ) );
+  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail;
+  return State< S7, S2, Tail... >::make( S7( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S12, S9, S7, S2, Tail... > > const& src ) {
+  std::shared_ptr< T > const& arg1 = src->tail->tail->head.content;
+  std::shared_ptr< F > const& arg2 = src->head.content;
+  std::shared_ptr< T > content( new Mul( arg1, arg2 ) );
+  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S7, S2, Tail... >::make( S7( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S3, S5, S6, S4, Tail... > > const& src ) {
+  std::shared_ptr< E > const& arg1 = src->tail->tail->head.content;
+  std::shared_ptr< T > const& arg2 = src->head.content;
+  std::shared_ptr< E > content( new Add( arg1, arg2 ) );
+  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S6, S4, Tail... >::make( S6( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S7, S4, Tail... > > const& src ) {
+  std::shared_ptr< T > const& arg1 = src->head.content;
+  std::shared_ptr< E > content( new TToE( arg1 ) );
+  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail;
+  return State< S6, S4, Tail... >::make( S6( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S8, S4, Tail... > > const& src ) {
+  int const& arg1 = src->head.content;
+  std::shared_ptr< F > content( new Num( arg1 ) );
+  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail;
+  return State< S11, S4, Tail... >::make( S11( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S10, S6, S4, S4, Tail... > > const& src ) {
+  std::shared_ptr< E > const& arg1 = src->tail->head.content;
+  std::shared_ptr< F > content( new Paren( arg1 ) );
+  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S11, S4, Tail... >::make( S11( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S11, S4, Tail... > > const& src ) {
+  std::shared_ptr< F > const& arg1 = src->head.content;
+  std::shared_ptr< T > content( new FToT( arg1 ) );
+  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail;
+  return State< S7, S4, Tail... >::make( S7( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S12, S9, S7, S4, Tail... > > const& src ) {
+  std::shared_ptr< T > const& arg1 = src->tail->tail->head.content;
+  std::shared_ptr< F > const& arg2 = src->head.content;
+  std::shared_ptr< T > content( new Mul( arg1, arg2 ) );
+  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S7, S4, Tail... >::make( S7( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S8, S5, Tail... > > const& src ) {
+  int const& arg1 = src->head.content;
+  std::shared_ptr< F > content( new Num( arg1 ) );
+  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail;
+  return State< S11, S5, Tail... >::make( S11( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S10, S6, S4, S5, Tail... > > const& src ) {
+  std::shared_ptr< E > const& arg1 = src->tail->head.content;
+  std::shared_ptr< F > content( new Paren( arg1 ) );
+  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S11, S5, Tail... >::make( S11( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S11, S5, Tail... > > const& src ) {
+  std::shared_ptr< F > const& arg1 = src->head.content;
+  std::shared_ptr< T > content( new FToT( arg1 ) );
+  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail;
+  return State< S3, S5, Tail... >::make( S3( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S12, S9, S3, S5, Tail... > > const& src ) {
+  std::shared_ptr< T > const& arg1 = src->tail->tail->head.content;
+  std::shared_ptr< F > const& arg2 = src->head.content;
+  std::shared_ptr< T > content( new Mul( arg1, arg2 ) );
+  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S3, S5, Tail... >::make( S3( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S8, S9, Tail... > > const& src ) {
+  int const& arg1 = src->head.content;
+  std::shared_ptr< F > content( new Num( arg1 ) );
+  std::shared_ptr< State< S9, Tail... > > const& tail = src->tail;
+  return State< S12, S9, Tail... >::make( S12( content ), tail );
+}
+
+template< typename... Tail >
+auto reduce( std::shared_ptr< State< S10, S6, S4, S9, Tail... > > const& src ) {
+  std::shared_ptr< E > const& arg1 = src->tail->head.content;
+  std::shared_ptr< F > content( new Paren( arg1 ) );
+  std::shared_ptr< State< S9, Tail... > > const& tail = src->tail->tail->tail;
+  return State< S12, S9, Tail... >::make( S12( content ), tail );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

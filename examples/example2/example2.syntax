@@ -1,0 +1,9 @@
+
+syntax example2 (E) {
+       Add	:   E	->	E "add" T
+       Mul	:   T	->	T "mul" F
+       Num	:   F	->	int
+       Paren	:   F	->	"lp" E "rp"
+       TToE	:   E	->	T
+       FToT	:   T	->	F
+}

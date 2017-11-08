@@ -1,0 +1,7 @@
+
+syntax example1 (A) {
+  genA  : A -> "a" A
+  BToA  : A -> B
+  genAB : B -> "a" B "b"
+  fin   : B -> eps
+}
