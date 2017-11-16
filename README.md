@@ -1,7 +1,7 @@
 
 ## TypeLevelLR
 
-- Fluent API Generator
+- Fluent DSL Generator
 
 - Supporting lauguages are:
     - Haskell
@@ -9,7 +9,9 @@
 
 ### How to Install
 
-how?
+    	> git clone https://github.com/ymzk/typelevelLR
+	> cd typelevelLR
+        > stack install
 
 ### Usage:
 
@@ -22,17 +24,18 @@ how?
             nameString    : Name  -> str
         }
 
-1. Generate Fluent API
+1. Generate Fluent DSL Library
 
         > typelevelLR -hs hello.syntax
 
-1. Import Fluent API
+1. Import Fluent DSL Library
 
         > nano MyApp.hs
-        module MyApp where
         import HelloDSL
+
         main :: IO ()
-        main = print $ begin hello "ymzk" end
+        main = print $ begin hello str "ymzk" end
+
         > runghc MyApp.hs
         HelloWithName (NameString "ymzk")
 
@@ -40,7 +43,9 @@ how?
 
         > nano HelloDSLSemantics.hs
         module HelloDSLSemantics where
+
         import HelloDSL
+
         runHelloDSL :: Start -> IO ()
         runHelloDSL SimpleHello name) = putStrLn "Hello!!"
         runHelloDSL (HelloWithName (NameString name)) = putStrLn ("Hello, " ++ name ++ ".")
@@ -49,10 +54,13 @@ how?
 
         > nano MyApp.hs
         module MyApp where
+
         import HelloDSL
         import HelloDSLSemantics
+
         main :: IO ()
-        main = runHelloDSL $ begin hello "ymzk" end
+        main = runHelloDSL $ begin hello str "ymzk" end
+
         > runghc MyApp.hs
         Hello, ymzk.
 

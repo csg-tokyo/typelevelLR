@@ -125,7 +125,6 @@ tellLanguageOptions = do
   tellsLn "{-# LANGUAGE FunctionalDependencies #-}"
   tellsLn "{-# LANGUAGE FlexibleInstances #-}"
   tellsLn "{-# LANGUAGE UndecidableInstances #-}"
-  tellsLn "{-# LANGUAGE RankNTypes #-}"
 
 tellTypeProgramDefinition :: (MonadWriter (Endo String) m) => m ()
 tellTypeProgramDefinition = do

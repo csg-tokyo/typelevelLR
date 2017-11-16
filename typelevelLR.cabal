@@ -29,7 +29,7 @@ library
                      , filepath    >= 1.4 && < 2
   default-language:    Haskell2010
 
-executable typelevelLR-exe
+executable typelevelLR
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
@@ -44,10 +44,12 @@ test-suite typelevelLR-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       SampleSyntaxes
+                     , UtilitySpec
                      , IntegratedTest
   build-depends:       base
                      , typelevelLR
                      , hspec      >= 2.4
+                     , QuickCheck >= 2.9
                      , directory  >= 1.3
                      , process    >= 1.4
                      , filepath   >= 1.4

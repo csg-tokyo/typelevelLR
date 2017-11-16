@@ -1,5 +1,6 @@
 
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Utility (module Utility) where
 

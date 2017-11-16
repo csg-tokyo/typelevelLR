@@ -5,6 +5,7 @@ import Syntax
 import SyntaxParser
 
 import qualified SampleSyntaxes
+import qualified UtilitySpec
 import qualified IntegratedTest
 
 import Control.Monad  (forM_)
@@ -24,6 +25,8 @@ main = hspec $ do
         case parse parseSyntax "" (show syntax) of
           Left err -> expectationFailure (show err)
           Right syntax' -> show syntax' `shouldBe` show syntax
+
+  UtilitySpec.spec
 
   describe "integrated test" $ do
     IntegratedTest.integratedSpec
