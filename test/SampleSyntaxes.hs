@@ -16,7 +16,7 @@ sampleSyntaxSource2 :: String
 sampleSyntaxSource2 = "syntax sampleSyntax2(A){a:A->\"a\"A;fromB:A->B;ab:B->\"a\"B\"b\";fin:B->eps}"
 
 sampleSyntaxSource3 :: String
-sampleSyntaxSource3 = "syntax sampleSyntax3 (E) {; Add: E -> E \"add\" T; TToE: E -> T; Mul: T -> T \"mul\" F; FToT: T -> F; Num: F -> int; Paren : F -> \"lp\" E \"rp\" ;}"
+sampleSyntaxSource3 = "syntax sampleSyntax3 (E) {; Add: E -> E \"add\" T; TToE: E -> T; Mul: T -> T \"mul\" F; FToT: T -> F; Num: F -> \"num( Int )\"; Paren : F -> \"lp\" E \"rp\" ;}"
 
 sampleSyntaxSource4 :: String
 sampleSyntaxSource4 = (`appEndo` "") $ execWriter $ do

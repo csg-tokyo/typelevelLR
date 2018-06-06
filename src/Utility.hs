@@ -4,16 +4,14 @@
 
 module Utility (module Utility) where
 
-import Data.Monoid
-import Control.Arrow
-import Control.Monad
-
+import Control.Monad         (forM, forM_)
+import Control.Monad.Writer  (MonadWriter(tell), Writer, execWriter)
+import Control.Monad.State   (get, put, evalStateT)
+import Control.Monad.Trans   (lift)
+import Data.Monoid           (Endo(Endo, appEndo))
+import Data.List             (intercalate, tails)
+import Data.Char             (toUpper, toLower, isAlpha)
 import Text.Parsec
-import Data.Char            (toUpper, toLower, isAlpha)
-import Control.Monad.Writer (MonadWriter(tell))
-import Control.Monad.State  (get, put, evalStateT)
-import Control.Monad.Trans  (lift)
-import Data.List            (intercalate, tails)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -59,17 +57,27 @@ fixPoint = fixPointBy (==)
 
 -------------------------------------------------------------------------------
 
+told :: Writer (Endo String) any -> String
+told m = tolds m ""
+
+tolds :: Writer (Endo String) any -> ShowS
+tolds = appEndo . execWriter
+
+
+tellNewline :: (MonadWriter (Endo String) m) => m ()
+tellNewline = tells "\n"
+
 tells :: (MonadWriter (Endo [a]) m) => [a] -> m ()
 tells xs = tell (Endo (xs ++))
 
 tellsLn :: (MonadWriter (Endo String) m) => String -> m ()
-tellsLn xs = tells xs >> tells "\n"
+tellsLn xs = tells xs >> tellNewline
 
 tellsShow :: (MonadWriter (Endo String) m, Show a) => a -> m ()
 tellsShow a = tell (Endo (shows a))
 
 tellsShowLn :: (MonadWriter (Endo String) m, Show a) => a -> m ()
-tellsShowLn a = tellsShow a >> tells "\n"
+tellsShowLn a = tellsShow a >> tellNewline
 
 -------------------------------------------------------------------------------
 
@@ -126,5 +134,14 @@ snakeCase = intercalate "_" . splitIdentifier
 
 allCaps :: String -> String
 allCaps = intercalate "_" . map (map toUpper) . splitIdentifier
+
+-------------------------------------------------------------------------------
+
+assertEq :: (Eq a, Show a) => a -> a -> a
+assertEq a1 a2 = if a1 == a2 then a1 else error . told $ do
+  tells "assertEq -- "
+  tellsShow a1
+  tells " /= "
+  tellsShow a2
 
 -------------------------------------------------------------------------------

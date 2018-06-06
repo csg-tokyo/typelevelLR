@@ -9,8 +9,8 @@ A::~A() noexcept {}
 B::~B() noexcept {}
 
 
-GenA::GenA( std::shared_ptr< A > const& arg1 )
-  :std::tuple< std::shared_ptr< A > >( arg1 ) {}
+GenA::GenA( A const& arg1 )
+  :std::tuple< A >( arg1 ) {}
 
 void GenA::accept( Visitor& visitor ) {
   visitor.visitGenA( *this );
@@ -20,8 +20,8 @@ void GenA::accept( ConstVisitor& visitor ) const {
 }
 
 
-BToA::BToA( std::shared_ptr< B > const& arg1 )
-  :std::tuple< std::shared_ptr< B > >( arg1 ) {}
+BToA::BToA( B const& arg1 )
+  :std::tuple< B >( arg1 ) {}
 
 void BToA::accept( Visitor& visitor ) {
   visitor.visitBToA( *this );
@@ -31,8 +31,8 @@ void BToA::accept( ConstVisitor& visitor ) const {
 }
 
 
-GenAB::GenAB( std::shared_ptr< B > const& arg1 )
-  :std::tuple< std::shared_ptr< B > >( arg1 ) {}
+GenAB::GenAB( B const& arg1 )
+  :std::tuple< B >( arg1 ) {}
 
 void GenAB::accept( Visitor& visitor ) {
   visitor.visitGenAB( *this );
@@ -88,17 +88,17 @@ std::ostream& operator <<( std::ostream &out, B const& self ) {
 
 
 std::ostream& operator <<( std::ostream& out, GenA const& self ) {
-  out << "GenA("<< *std::get< 0 >( self ) << ")";
+  out << "GenA("<<  std::get< 0 >( self ) << ")";
   return out;
 }
 
 std::ostream& operator <<( std::ostream& out, BToA const& self ) {
-  out << "BToA("<< *std::get< 0 >( self ) << ")";
+  out << "BToA("<<  std::get< 0 >( self ) << ")";
   return out;
 }
 
 std::ostream& operator <<( std::ostream& out, GenAB const& self ) {
-  out << "GenAB("<< *std::get< 0 >( self ) << ")";
+  out << "GenAB("<<  std::get< 0 >( self ) << ")";
   return out;
 }
 
@@ -109,25 +109,25 @@ std::ostream& operator <<( std::ostream& out, Fin const& self ) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-S1::S1( std::shared_ptr< A > const& content_ ) :content( content_ ) {}
+Node1::Node1() {}
 
-S2::S2() {}
+Node2::Node2( A const& content_ ) :content( content_ ) {}
 
-S3::S3( std::shared_ptr< B > const& content_ ) :content( content_ ) {}
+Node3::Node3( B const& content_ ) :content( content_ ) {}
 
-S4::S4( std::shared_ptr< B > const& content_ ) :content( content_ ) {}
+Node4::Node4( B const& content_ ) :content( content_ ) {}
 
-S5::S5() {}
+Node5::Node5() {}
 
-S6::S6( std::shared_ptr< A > const& content_ ) :content( content_ ) {}
+Node6::Node6( A const& content_ ) :content( content_ ) {}
 
-S7::S7() {}
+Node7::Node7() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr< State< S2 > > begin() {
+std::shared_ptr< State< Node1 > > begin() {
   std::shared_ptr< State<> > bottom( new State<>() );
-  return State< S2 >::make( S2(), bottom );
+  return State< Node1 >::make( Node1(), bottom );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

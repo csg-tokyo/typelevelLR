@@ -1,26 +1,27 @@
 
 #ifndef __EXAMPLE2_HPP__
+#define __EXAMPLE2_HPP__
 
 #include <memory>
 #include <string>
 #include <iostream>
+
+namespace example2 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // grammar definition
 
 // syntax example2 (E) {
-//   Add : E -> E "add" T
+//   Add : E -> E "add()" T
 //   TToE : E -> T
-//   Num : F -> int
-//   Paren : F -> "lp" E "rp"
-//   Mul : T -> T "mul" F
+//   Num : F -> "num(Int)"
+//   Paren : F -> "lp()" E "rp()"
+//   Mul : T -> T "mul()" F
 //   FToT : T -> F
 // }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace example2 {
 
 // AST node abstract classes
 
@@ -29,7 +30,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~E() noexcept;
+  virtual ~E() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -40,7 +41,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~F() noexcept;
+  virtual ~F() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -51,7 +52,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~T() noexcept;
+  virtual ~T() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -61,51 +62,51 @@ public:
 
 // AST node concrete classes
 
-class Add : public E, public std::tuple< std::shared_ptr< E >, std::shared_ptr< T > > {
+class Add : public E, public std::tuple< E, T > {
 public:
-  explicit Add( std::shared_ptr< E > const& arg1, std::shared_ptr< T > const& arg2 );
+  explicit Add( E const& arg1, T const& arg2 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class TToE : public E, public std::tuple< std::shared_ptr< T > > {
+class TToE : public E, public std::tuple< T > {
 public:
-  explicit TToE( std::shared_ptr< T > const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-
-class Num : public F, public std::tuple< int > {
-public:
-  explicit Num( int const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-class Paren : public F, public std::tuple< std::shared_ptr< E > > {
-public:
-  explicit Paren( std::shared_ptr< E > const& arg1 );
+  explicit TToE( T const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
 
-class Mul : public T, public std::tuple< std::shared_ptr< T >, std::shared_ptr< F > > {
+class Num : public F, public std::tuple< Int > {
 public:
-  explicit Mul( std::shared_ptr< T > const& arg1, std::shared_ptr< F > const& arg2 );
+  explicit Num( Int const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class FToT : public T, public std::tuple< std::shared_ptr< F > > {
+class Paren : public F, public std::tuple< E > {
 public:
-  explicit FToT( std::shared_ptr< F > const& arg1 );
+  explicit Paren( E const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+
+class Mul : public T, public std::tuple< T, F > {
+public:
+  explicit Mul( T const& arg1, F const& arg2 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+class FToT : public T, public std::tuple< F > {
+public:
+  explicit FToT( F const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
@@ -167,71 +168,70 @@ std::ostream& operator <<( std::ostream& out, FToT const& self );
 
 // automaton nodes
 
-class S1 {
+class Node1 {
 public:
-  std::shared_ptr< E > content;
-  explicit S1( std::shared_ptr< E > const& content_ );
 };
 
-class S2 {
+class Node2 {
 public:
-  explicit S2();
+  E content;
+  explicit Node2( E const& content_ );
 };
 
-class S3 {
+class Node3 {
 public:
-  std::shared_ptr< T > content;
-  explicit S3( std::shared_ptr< T > const& content_ );
+  T content;
+  explicit Node3( T const& content_ );
 };
 
-class S4 {
+class Node4 {
 public:
-  explicit S4();
+  explicit Node4();
 };
 
-class S5 {
+class Node5 {
 public:
-  explicit S5();
+  explicit Node5();
 };
 
-class S6 {
+class Node6 {
 public:
-  std::shared_ptr< E > content;
-  explicit S6( std::shared_ptr< E > const& content_ );
+  E content;
+  explicit Node6( E const& content_ );
 };
 
-class S7 {
+class Node7 {
 public:
-  std::shared_ptr< T > content;
-  explicit S7( std::shared_ptr< T > const& content_ );
+  F content;
+  explicit Node7( F const& content_ );
 };
 
-class S8 {
+class Node8 {
 public:
-  int content;
-  explicit S8( int const& content_ );
+  F content;
+  explicit Node8( F const& content_ );
 };
 
-class S9 {
+class Node9 {
 public:
-  explicit S9();
+  explicit Node9();
 };
 
-class S10 {
+class Node10 {
 public:
-  explicit S10();
+  T content;
+  explicit Node10( T const& content_ );
 };
 
-class S11 {
+class Node11 {
 public:
-  std::shared_ptr< F > content;
-  explicit S11( std::shared_ptr< F > const& content_ );
+  Int arg1
+  explicit Node11( Int const& arg1_ );
 };
 
-class S12 {
+class Node12 {
 public:
-  std::shared_ptr< F > content;
-  explicit S12( std::shared_ptr< F > const& content_ );
+  explicit Node12();
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,7 +247,7 @@ class State<> {};
 template< typename Head, typename... Tail >
 class State< Head, Tail... > {
 public:
-  std::shared_ptr< State< Head, Tail... > > this_;
+  std::weak_ptr< State< Head, Tail... > > this_;
   Head head;
   std::shared_ptr< State< Tail... > > tail;
 
@@ -255,15 +255,15 @@ private:
   State( Head const& head_, std::shared_ptr< State< Tail... > > const& tail_ );
 
 public:
-static std::shared_ptr< State< Head, Tail... > > make( Head const& head, std::shared_ptr< State< Tail... > > const& tail );
+  static std::shared_ptr< State< Head, Tail... > > make( Head const& head, std::shared_ptr< State< Tail... > > const& tail );
 
 public:
   auto end();
   auto add();
+  auto num( Int const& arg1 );
   auto lp();
-  auto mul();
   auto rp();
-  auto num( int const& value );
+  auto mul();
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -277,16 +277,16 @@ template< typename... Stack >
 auto add_transition( std::shared_ptr< State< Stack... > > const& src );
 
 template< typename... Stack >
-auto lp_transition( std::shared_ptr< State< Stack... > > const& src );
+auto num_transition( std::shared_ptr< State< Stack... > > const& src, Int const& arg1 );
 
 template< typename... Stack >
-auto mul_transition( std::shared_ptr< State< Stack... > > const& src );
+auto lp_transition( std::shared_ptr< State< Stack... > > const& src );
 
 template< typename... Stack >
 auto rp_transition( std::shared_ptr< State< Stack... > > const& src );
 
 template< typename... Stack >
-auto num_transition( std::shared_ptr< State< Stack... > > const& src, int const& value );
+auto mul_transition( std::shared_ptr< State< Stack... > > const& src );
 
 
 template< typename... Stack >
@@ -294,7 +294,7 @@ auto reduce( std::shared_ptr< State< Stack... > > const& src );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr< State< S2 > > begin();
+std::shared_ptr< State< Node1 > > begin();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

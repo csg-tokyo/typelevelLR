@@ -49,92 +49,88 @@ auto b_transition( std::shared_ptr< State< Stack... > > const& src ) {
 
 // shift transitions
 
-template<>
-inline auto end_transition( std::shared_ptr< State< S1, S2 > > const& src ) {
+template< typename Prev >
+inline auto end_transition( std::shared_ptr< State< Node2, Prev > > const& src ) {
   return src->head.content;
 }
 
 template< typename... Tail >
-auto a_transition( std::shared_ptr< State< S2, Tail... > > const& src ) {
-  return State< S5, S2, Tail... >::make( S5(), src );
+auto a_transition( std::shared_ptr< State< Node1, Tail... > > const& src ) {
+  return State< Node5, Node1, Tail... >::make( Node5(), src );
+}
+
+template< typename... Tail >
+auto a_transition( std::shared_ptr< State< Node5, Tail... > > const& src ) {
+  return State< Node5, Node5, Tail... >::make( Node5(), src );
 }
 
 
 template< typename... Tail >
-auto b_transition( std::shared_ptr< State< S4, Tail... > > const& src ) {
-  return State< S7, S4, Tail... >::make( S7(), src );
-}
-
-
-template< typename... Tail >
-auto a_transition( std::shared_ptr< State< S5, Tail... > > const& src ) {
-  return State< S5, S5, Tail... >::make( S5(), src );
+auto b_transition( std::shared_ptr< State< Node4, Tail... > > const& src ) {
+  return State< Node7, Node4, Tail... >::make( Node7(), src );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // reduces
 
+// genA : A -> "a()" A
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S3, S2, Tail... > > const& src ) {
-  std::shared_ptr< B > const& arg1 = src->head.content;
-  std::shared_ptr< A > content( new BToA( arg1 ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail;
-  return State< S1, S2, Tail... >::make( S1( content ), tail );
+auto reduce( std::shared_ptr< State< Node6, Node5, Node1, Tail... > > const& src ) {
+  A const& arg1 = src->tail->head.arg1;
+  A content( new GenA( arg1 ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail->tail;
+  return State< Node2, Node1, Tail... >::make( Node2( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S6, S5, S2, Tail... > > const& src ) {
-  std::shared_ptr< A > const& arg1 = src->head.content;
-  std::shared_ptr< A > content( new GenA( arg1 ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail;
-  return State< S1, S2, Tail... >::make( S1( content ), tail );
+auto reduce( std::shared_ptr< State< Node6, Node5, Node5, Tail... > > const& src ) {
+  A const& arg1 = src->tail->head.arg1;
+  A content( new GenA( arg1 ) );
+  std::shared_ptr< State< Node5, Tail... > > const& tail = src->tail->tail;
+  return State< Node6, Node5, Tail... >::make( Node6( content ), tail );
 }
-
+// BToA : A -> B
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S2, Tail... > > const& src ) {
-  std::shared_ptr< B > content( new Fin(  ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src;
-  return State< S3, S2, Tail... >::make( S3( content ), tail );
+auto reduce( std::shared_ptr< State< Node3, Node1, Tail... > > const& src ) {
+  B const& arg1 = src->head.arg1;
+  A content( new BToA( arg1 ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail;
+  return State< Node2, Node1, Tail... >::make( Node2( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S7, S4, S5, S2, Tail... > > const& src ) {
-  std::shared_ptr< B > const& arg1 = src->tail->head.content;
-  std::shared_ptr< B > content( new GenAB( arg1 ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail->tail;
-  return State< S3, S2, Tail... >::make( S3( content ), tail );
+auto reduce( std::shared_ptr< State< Node4, Node5, Tail... > > const& src ) {
+  B const& arg1 = src->head.arg1;
+  A content( new BToA( arg1 ) );
+  std::shared_ptr< State< Node5, Tail... > > const& tail = src->tail;
+  return State< Node6, Node5, Tail... >::make( Node6( content ), tail );
 }
-
+// genAB : B -> "a()" B "b()"
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S4, S5, Tail... > > const& src ) {
-  std::shared_ptr< B > const& arg1 = src->head.content;
-  std::shared_ptr< A > content( new BToA( arg1 ) );
-  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail;
-  return State< S6, S5, Tail... >::make( S6( content ), tail );
+auto reduce( std::shared_ptr< State< Node7, Node4, Node5, Node1, Tail... > > const& src ) {
+  B const& arg1 = src->tail->head.arg1;
+  B content( new GenAB( arg1 ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail->tail->tail;
+  return State< Node3, Node1, Tail... >::make( Node3( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S6, S5, S5, Tail... > > const& src ) {
-  std::shared_ptr< A > const& arg1 = src->head.content;
-  std::shared_ptr< A > content( new GenA( arg1 ) );
-  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail->tail;
-  return State< S6, S5, Tail... >::make( S6( content ), tail );
+auto reduce( std::shared_ptr< State< Node7, Node4, Node5, Node5, Tail... > > const& src ) {
+  B const& arg1 = src->tail->head.arg1;
+  B content( new GenAB( arg1 ) );
+  std::shared_ptr< State< Node5, Tail... > > const& tail = src->tail->tail->tail;
+  return State< Node4, Node5, Tail... >::make( Node4( content ), tail );
 }
-
+// fin : B -> eps
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S5, Tail... > > const& src ) {
-  std::shared_ptr< B > content( new Fin(  ) );
-  std::shared_ptr< State< S5, Tail... > > const& tail = src;
-  return State< S4, S5, Tail... >::make( S4( content ), tail );
+auto reduce( std::shared_ptr< State< Node1, Tail... > > const& src ) {
+  B content( new Fin(  ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src;
+  return State< Node3, Node1, Tail... >::make( Node3( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S7, S4, S5, S5, Tail... > > const& src ) {
-  std::shared_ptr< B > const& arg1 = src->tail->head.content;
-  std::shared_ptr< B > content( new GenAB( arg1 ) );
-  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail->tail->tail;
-  return State< S4, S5, Tail... >::make( S4( content ), tail );
+auto reduce( std::shared_ptr< State< Node5, Tail... > > const& src ) {
+  B content( new Fin(  ) );
+  std::shared_ptr< State< Node5, Tail... > > const& tail = src;
+  return State< Node4, Node5, Tail... >::make( Node4( content ), tail );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

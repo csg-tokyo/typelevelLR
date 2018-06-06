@@ -5,6 +5,7 @@ import Utility       (pascalCase)
 import Syntax        (Syntax(syntaxName))
 import SyntaxParser  (parseSyntax, parse)
 import LALRAutomaton (lalrAutomaton)
+import CodeGenerateEnv
 
 import qualified GenerateHaskell as GenHs
 import qualified GenerateCpp     as GenCpp
@@ -12,6 +13,7 @@ import qualified GenerateCpp     as GenCpp
 import System.FilePath       ((</>))
 import Data.Monoid           (Endo(appEndo))
 import Control.Monad.Writer  (execWriter, Writer)
+import Control.Monad.Reader  (ReaderT(runReaderT))
 
 -------------------------------------------------------------------------------
 
@@ -42,15 +44,15 @@ generateCpp src dst = do
         Left  err -> error (show err)
         Right s   -> s
   let automaton = lalrAutomaton syntax
-  let nodeInfo  = GenCpp.buildNodeInfoTable automaton
+  let env = buildCodeGenerateEnv syntax automaton
 
   let hppFilePath = dst </> (syntaxName syntax ++ ".hpp")
   let cppFilePath = dst </> (syntaxName syntax ++ ".cpp")
   let hppImplFilePath = dst </> (syntaxName syntax ++ ".hpp.impl")
 
-  let hppCode     = generate (GenCpp.tellHpp     syntax automaton nodeInfo)
-  let cppCode     = generate (GenCpp.tellCpp     syntax automaton nodeInfo)
-  let hppImplCode = generate (GenCpp.tellHppImpl syntax automaton nodeInfo)
+  let hppCode     = generate (runReaderT GenCpp.tellHpp     env)
+  let cppCode     = generate (runReaderT GenCpp.tellCpp     env)
+  let hppImplCode = generate (runReaderT GenCpp.tellHppImpl env)
 
   writeFile  hppFilePath     hppCode
   writeFile  cppFilePath     cppCode

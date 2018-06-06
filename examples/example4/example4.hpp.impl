@@ -23,11 +23,6 @@ auto State< Head, Tail... >::hello() {
   return hello_transition( this_ );
 }
 
-template< typename Head, typename... Tail >
-auto State< Head, Tail... >::str( std::string const& value ) {
-  return str_transition( this_, value );
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template< typename... Stack >
@@ -40,56 +35,46 @@ auto hello_transition( std::shared_ptr< State< Stack... > > const& src ) {
   return reduce( src )->hello();
 }
 
-template< typename... Stack >
-auto str_transition( std::shared_ptr< State< Stack... > > const& src, std::string const& value ) {
-  return reduce( src )->str();
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // shift transitions
 
-template<>
-inline auto end_transition( std::shared_ptr< State< S1, S2 > > const& src ) {
+template< typename Prev >
+inline auto end_transition( std::shared_ptr< State< Node2, Prev > > const& src ) {
   return src->head.content;
 }
 
 template< typename... Tail >
-auto hello_transition( std::shared_ptr< State< S2, Tail... > > const& src ) {
-  return State< S4, S2, Tail... >::make( S4(), src );
-}
-
-
-template< typename... Tail >
-auto str_transition( std::shared_ptr< State< S4, Tail... > > const& src, std::string const& value ) {
-  return State< S3, S4, Tail... >::make( S3( value ), src );
+auto hello_transition( std::shared_ptr< State< Node1, Tail... > > const& src ) {
+  return State< Node4, Node1, Tail... >::make( Node4(), src );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // reduces
 
+// simpleHello : Start -> "hello()"
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S5, S4, S2, Tail... > > const& src ) {
-  std::shared_ptr< Name > const& arg1 = src->head.content;
-  std::shared_ptr< Start > content( new HelloWithName( arg1 ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail;
-  return State< S1, S2, Tail... >::make( S1( content ), tail );
+auto reduce( std::shared_ptr< State< Node4, Node1, Tail... > > const& src ) {
+  Start content( new SimpleHello(  ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail;
+  return State< Node2, Node1, Tail... >::make( Node2( content ), tail );
 }
-
+// helloWithName : Start -> "hello()" Name
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S4, S2, Tail... > > const& src ) {
-  std::shared_ptr< Start > content( new SimpleHello(  ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail;
-  return State< S1, S2, Tail... >::make( S1( content ), tail );
+auto reduce( std::shared_ptr< State< Node3, Node4, Node1, Tail... > > const& src ) {
+  Name const& arg1 = src->tail->head.arg1;
+  Start content( new HelloWithName( arg1 ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail->tail;
+  return State< Node2, Node1, Tail... >::make( Node2( content ), tail );
 }
-
+// nameString : Name -> str
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S3, S4, Tail... > > const& src ) {
-  std::string const& arg1 = src->head.content;
-  std::shared_ptr< Name > content( new NameString( arg1 ) );
-  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail;
-  return State< S5, S4, Tail... >::make( S5( content ), tail );
+auto reduce( std::shared_ptr< State< Node5, Node4, Tail... > > const& src ) {
+  str const& arg1 = src->head.arg1;
+  Name content( new NameString( arg1 ) );
+  std::shared_ptr< State< Node4, Tail... > > const& tail = src->tail;
+  return State< Node3, Node4, Tail... >::make( Node3( content ), tail );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -19,13 +19,13 @@ auto State< Head, Tail... >::end() {
 }
 
 template< typename Head, typename... Tail >
-auto State< Head, Tail... >::I() {
-  return I_transition( this_ );
+auto State< Head, Tail... >::O() {
+  return O_transition( this_ );
 }
 
 template< typename Head, typename... Tail >
-auto State< Head, Tail... >::O() {
-  return O_transition( this_ );
+auto State< Head, Tail... >::I() {
+  return I_transition( this_ );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,505 +36,471 @@ auto end_transition( std::shared_ptr< State< Stack... > > const& src ) {
 }
 
 template< typename... Stack >
-auto I_transition( std::shared_ptr< State< Stack... > > const& src ) {
-  return reduce( src )->I();
+auto O_transition( std::shared_ptr< State< Stack... > > const& src ) {
+  return reduce( src )->O();
 }
 
 template< typename... Stack >
-auto O_transition( std::shared_ptr< State< Stack... > > const& src ) {
-  return reduce( src )->O();
+auto I_transition( std::shared_ptr< State< Stack... > > const& src ) {
+  return reduce( src )->I();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // shift transitions
 
-template<>
-inline auto end_transition( std::shared_ptr< State< S1, S2 > > const& src ) {
+template< typename Prev >
+inline auto end_transition( std::shared_ptr< State< Node2, Prev > > const& src ) {
   return src->head.content;
 }
 
 template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S2, Tail... > > const& src ) {
-  return State< S12, S2, Tail... >::make( S12(), src );
+auto I_transition( std::shared_ptr< State< Node1, Tail... > > const& src ) {
+  return State< Node12, Node1, Tail... >::make( Node12(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S2, Tail... > > const& src ) {
-  return State< S5, S2, Tail... >::make( S5(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S3, Tail... > > const& src ) {
-  return State< S8, S3, Tail... >::make( S8(), src );
+auto I_transition( std::shared_ptr< State< Node3, Tail... > > const& src ) {
+  return State< Node8, Node3, Tail... >::make( Node8(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S3, Tail... > > const& src ) {
-  return State< S3, S3, Tail... >::make( S3(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S4, Tail... > > const& src ) {
-  return State< S8, S4, Tail... >::make( S8(), src );
+auto I_transition( std::shared_ptr< State< Node4, Tail... > > const& src ) {
+  return State< Node8, Node4, Tail... >::make( Node8(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S4, Tail... > > const& src ) {
-  return State< S3, S4, Tail... >::make( S3(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S5, Tail... > > const& src ) {
-  return State< S8, S5, Tail... >::make( S8(), src );
+auto I_transition( std::shared_ptr< State< Node5, Tail... > > const& src ) {
+  return State< Node8, Node5, Tail... >::make( Node8(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S5, Tail... > > const& src ) {
-  return State< S3, S5, Tail... >::make( S3(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S8, Tail... > > const& src ) {
-  return State< S14, S8, Tail... >::make( S14(), src );
+auto I_transition( std::shared_ptr< State< Node8, Tail... > > const& src ) {
+  return State< Node14, Node8, Tail... >::make( Node14(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S8, Tail... > > const& src ) {
-  return State< S10, S8, Tail... >::make( S10(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S10, Tail... > > const& src ) {
-  return State< S19, S10, Tail... >::make( S19(), src );
+auto I_transition( std::shared_ptr< State< Node10, Tail... > > const& src ) {
+  return State< Node19, Node10, Tail... >::make( Node19(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S10, Tail... > > const& src ) {
-  return State< S16, S10, Tail... >::make( S16(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S11, Tail... > > const& src ) {
-  return State< S14, S11, Tail... >::make( S14(), src );
+auto I_transition( std::shared_ptr< State< Node11, Tail... > > const& src ) {
+  return State< Node14, Node11, Tail... >::make( Node14(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S11, Tail... > > const& src ) {
-  return State< S10, S11, Tail... >::make( S10(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S12, Tail... > > const& src ) {
-  return State< S14, S12, Tail... >::make( S14(), src );
+auto I_transition( std::shared_ptr< State< Node12, Tail... > > const& src ) {
+  return State< Node14, Node12, Tail... >::make( Node14(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S12, Tail... > > const& src ) {
-  return State< S10, S12, Tail... >::make( S10(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S14, Tail... > > const& src ) {
-  return State< S4, S14, Tail... >::make( S4(), src );
+auto I_transition( std::shared_ptr< State< Node14, Tail... > > const& src ) {
+  return State< Node4, Node14, Tail... >::make( Node4(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S14, Tail... > > const& src ) {
-  return State< S21, S14, Tail... >::make( S21(), src );
+auto I_transition( std::shared_ptr< State< Node16, Tail... > > const& src ) {
+  return State< Node17, Node16, Tail... >::make( Node17(), src );
+}
+
+template< typename... Tail >
+auto I_transition( std::shared_ptr< State< Node17, Tail... > > const& src ) {
+  return State< Node19, Node17, Tail... >::make( Node19(), src );
+}
+
+template< typename... Tail >
+auto I_transition( std::shared_ptr< State< Node19, Tail... > > const& src ) {
+  return State< Node25, Node19, Tail... >::make( Node25(), src );
+}
+
+template< typename... Tail >
+auto I_transition( std::shared_ptr< State< Node21, Tail... > > const& src ) {
+  return State< Node31, Node21, Tail... >::make( Node31(), src );
+}
+
+template< typename... Tail >
+auto I_transition( std::shared_ptr< State< Node22, Tail... > > const& src ) {
+  return State< Node4, Node22, Tail... >::make( Node4(), src );
+}
+
+template< typename... Tail >
+auto I_transition( std::shared_ptr< State< Node25, Tail... > > const& src ) {
+  return State< Node17, Node25, Tail... >::make( Node17(), src );
+}
+
+template< typename... Tail >
+auto I_transition( std::shared_ptr< State< Node28, Tail... > > const& src ) {
+  return State< Node25, Node28, Tail... >::make( Node25(), src );
+}
+
+template< typename... Tail >
+auto I_transition( std::shared_ptr< State< Node31, Tail... > > const& src ) {
+  return State< Node31, Node31, Tail... >::make( Node31(), src );
 }
 
 
 template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S16, Tail... > > const& src ) {
-  return State< S17, S16, Tail... >::make( S17(), src );
+auto O_transition( std::shared_ptr< State< Node1, Tail... > > const& src ) {
+  return State< Node5, Node1, Tail... >::make( Node5(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S16, Tail... > > const& src ) {
-  return State< S11, S16, Tail... >::make( S11(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S17, Tail... > > const& src ) {
-  return State< S19, S17, Tail... >::make( S19(), src );
+auto O_transition( std::shared_ptr< State< Node3, Tail... > > const& src ) {
+  return State< Node3, Node3, Tail... >::make( Node3(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S17, Tail... > > const& src ) {
-  return State< S16, S17, Tail... >::make( S16(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S19, Tail... > > const& src ) {
-  return State< S25, S19, Tail... >::make( S25(), src );
+auto O_transition( std::shared_ptr< State< Node4, Tail... > > const& src ) {
+  return State< Node3, Node4, Tail... >::make( Node3(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S19, Tail... > > const& src ) {
-  return State< S22, S19, Tail... >::make( S22(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S21, Tail... > > const& src ) {
-  return State< S31, S21, Tail... >::make( S31(), src );
+auto O_transition( std::shared_ptr< State< Node5, Tail... > > const& src ) {
+  return State< Node3, Node5, Tail... >::make( Node3(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S21, Tail... > > const& src ) {
-  return State< S28, S21, Tail... >::make( S28(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S22, Tail... > > const& src ) {
-  return State< S4, S22, Tail... >::make( S4(), src );
+auto O_transition( std::shared_ptr< State< Node8, Tail... > > const& src ) {
+  return State< Node10, Node8, Tail... >::make( Node10(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S22, Tail... > > const& src ) {
-  return State< S21, S22, Tail... >::make( S21(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S25, Tail... > > const& src ) {
-  return State< S17, S25, Tail... >::make( S17(), src );
+auto O_transition( std::shared_ptr< State< Node10, Tail... > > const& src ) {
+  return State< Node16, Node10, Tail... >::make( Node16(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S25, Tail... > > const& src ) {
-  return State< S11, S25, Tail... >::make( S11(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S28, Tail... > > const& src ) {
-  return State< S25, S28, Tail... >::make( S25(), src );
+auto O_transition( std::shared_ptr< State< Node11, Tail... > > const& src ) {
+  return State< Node10, Node11, Tail... >::make( Node10(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S28, Tail... > > const& src ) {
-  return State< S22, S28, Tail... >::make( S22(), src );
-}
-
-
-template< typename... Tail >
-auto I_transition( std::shared_ptr< State< S31, Tail... > > const& src ) {
-  return State< S31, S31, Tail... >::make( S31(), src );
+auto O_transition( std::shared_ptr< State< Node12, Tail... > > const& src ) {
+  return State< Node10, Node12, Tail... >::make( Node10(), src );
 }
 
 template< typename... Tail >
-auto O_transition( std::shared_ptr< State< S31, Tail... > > const& src ) {
-  return State< S28, S31, Tail... >::make( S28(), src );
+auto O_transition( std::shared_ptr< State< Node14, Tail... > > const& src ) {
+  return State< Node21, Node14, Tail... >::make( Node21(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node16, Tail... > > const& src ) {
+  return State< Node11, Node16, Tail... >::make( Node11(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node17, Tail... > > const& src ) {
+  return State< Node16, Node17, Tail... >::make( Node16(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node19, Tail... > > const& src ) {
+  return State< Node22, Node19, Tail... >::make( Node22(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node21, Tail... > > const& src ) {
+  return State< Node28, Node21, Tail... >::make( Node28(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node22, Tail... > > const& src ) {
+  return State< Node21, Node22, Tail... >::make( Node21(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node25, Tail... > > const& src ) {
+  return State< Node11, Node25, Tail... >::make( Node11(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node28, Tail... > > const& src ) {
+  return State< Node22, Node28, Tail... >::make( Node22(), src );
+}
+
+template< typename... Tail >
+auto O_transition( std::shared_ptr< State< Node31, Tail... > > const& src ) {
+  return State< Node28, Node31, Tail... >::make( Node28(), src );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // reduces
 
+// ruleS0 : S -> "O()" Mod0
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S33, S5, S2, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > const& arg1 = src->head.content;
-  std::shared_ptr< S > content( new RuleS0( arg1 ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail;
-  return State< S1, S2, Tail... >::make( S1( content ), tail );
+auto reduce( std::shared_ptr< State< Node33, Node5, Node1, Tail... > > const& src ) {
+  Mod0 const& arg1 = src->tail->head.arg1;
+  S content( new RuleS0( arg1 ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail->tail;
+  return State< Node2, Node1, Tail... >::make( Node2( content ), tail );
 }
-
+// ruleS1 : S -> "I()" Mod1
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S34, S12, S2, Tail... > > const& src ) {
-  std::shared_ptr< Mod1 > const& arg1 = src->head.content;
-  std::shared_ptr< S > content( new RuleS1( arg1 ) );
-  std::shared_ptr< State< S2, Tail... > > const& tail = src->tail->tail;
-  return State< S1, S2, Tail... >::make( S1( content ), tail );
+auto reduce( std::shared_ptr< State< Node34, Node12, Node1, Tail... > > const& src ) {
+  Mod1 const& arg1 = src->tail->head.arg1;
+  S content( new RuleS1( arg1 ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail->tail;
+  return State< Node2, Node1, Tail... >::make( Node2( content ), tail );
 }
-
+// accept : Mod0 -> eps
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S3, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > content( new Accept(  ) );
-  std::shared_ptr< State< S3, Tail... > > const& tail = src;
-  return State< S6, S3, Tail... >::make( S6( content ), tail );
+auto reduce( std::shared_ptr< State< Node3, Tail... > > const& src ) {
+  Mod0 content( new Accept(  ) );
+  std::shared_ptr< State< Node3, Tail... > > const& tail = src;
+  return State< Node6, Node3, Tail... >::make( Node6( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S6, S3, S3, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod0 > content( new Rule00( arg1 ) );
-  std::shared_ptr< State< S3, Tail... > > const& tail = src->tail->tail;
-  return State< S6, S3, Tail... >::make( S6( content ), tail );
+auto reduce( std::shared_ptr< State< Node4, Tail... > > const& src ) {
+  Mod0 content( new Accept(  ) );
+  std::shared_ptr< State< Node4, Tail... > > const& tail = src;
+  return State< Node23, Node4, Tail... >::make( Node23( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S7, S8, S3, Tail... > > const& src ) {
-  std::shared_ptr< Mod1 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod0 > content( new Rule01( arg1 ) );
-  std::shared_ptr< State< S3, Tail... > > const& tail = src->tail->tail;
-  return State< S6, S3, Tail... >::make( S6( content ), tail );
+auto reduce( std::shared_ptr< State< Node5, Tail... > > const& src ) {
+  Mod0 content( new Accept(  ) );
+  std::shared_ptr< State< Node5, Tail... > > const& tail = src;
+  return State< Node33, Node5, Tail... >::make( Node33( content ), tail );
 }
-
+// rule00 : Mod0 -> "O()" Mod0
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S4, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > content( new Accept(  ) );
-  std::shared_ptr< State< S4, Tail... > > const& tail = src;
-  return State< S23, S4, Tail... >::make( S23( content ), tail );
+auto reduce( std::shared_ptr< State< Node6, Node3, Node3, Tail... > > const& src ) {
+  Mod0 const& arg1 = src->tail->head.arg1;
+  Mod0 content( new Rule00( arg1 ) );
+  std::shared_ptr< State< Node3, Tail... > > const& tail = src->tail->tail;
+  return State< Node6, Node3, Tail... >::make( Node6( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S6, S3, S4, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod0 > content( new Rule00( arg1 ) );
-  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail->tail;
-  return State< S23, S4, Tail... >::make( S23( content ), tail );
+auto reduce( std::shared_ptr< State< Node6, Node3, Node4, Tail... > > const& src ) {
+  Mod0 const& arg1 = src->tail->head.arg1;
+  Mod0 content( new Rule00( arg1 ) );
+  std::shared_ptr< State< Node4, Tail... > > const& tail = src->tail->tail;
+  return State< Node23, Node4, Tail... >::make( Node23( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S7, S8, S4, Tail... > > const& src ) {
-  std::shared_ptr< Mod1 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod0 > content( new Rule01( arg1 ) );
-  std::shared_ptr< State< S4, Tail... > > const& tail = src->tail->tail;
-  return State< S23, S4, Tail... >::make( S23( content ), tail );
+auto reduce( std::shared_ptr< State< Node6, Node3, Node5, Tail... > > const& src ) {
+  Mod0 const& arg1 = src->tail->head.arg1;
+  Mod0 content( new Rule00( arg1 ) );
+  std::shared_ptr< State< Node5, Tail... > > const& tail = src->tail->tail;
+  return State< Node33, Node5, Tail... >::make( Node33( content ), tail );
 }
-
+// rule01 : Mod0 -> "I()" Mod1
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S5, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > content( new Accept(  ) );
-  std::shared_ptr< State< S5, Tail... > > const& tail = src;
-  return State< S33, S5, Tail... >::make( S33( content ), tail );
+auto reduce( std::shared_ptr< State< Node7, Node8, Node3, Tail... > > const& src ) {
+  Mod1 const& arg1 = src->tail->head.arg1;
+  Mod0 content( new Rule01( arg1 ) );
+  std::shared_ptr< State< Node3, Tail... > > const& tail = src->tail->tail;
+  return State< Node6, Node3, Tail... >::make( Node6( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S6, S3, S5, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod0 > content( new Rule00( arg1 ) );
-  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail->tail;
-  return State< S33, S5, Tail... >::make( S33( content ), tail );
+auto reduce( std::shared_ptr< State< Node7, Node8, Node4, Tail... > > const& src ) {
+  Mod1 const& arg1 = src->tail->head.arg1;
+  Mod0 content( new Rule01( arg1 ) );
+  std::shared_ptr< State< Node4, Tail... > > const& tail = src->tail->tail;
+  return State< Node23, Node4, Tail... >::make( Node23( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S7, S8, S5, Tail... > > const& src ) {
-  std::shared_ptr< Mod1 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod0 > content( new Rule01( arg1 ) );
-  std::shared_ptr< State< S5, Tail... > > const& tail = src->tail->tail;
-  return State< S33, S5, Tail... >::make( S33( content ), tail );
+auto reduce( std::shared_ptr< State< Node7, Node8, Node5, Tail... > > const& src ) {
+  Mod1 const& arg1 = src->tail->head.arg1;
+  Mod0 content( new Rule01( arg1 ) );
+  std::shared_ptr< State< Node5, Tail... > > const& tail = src->tail->tail;
+  return State< Node33, Node5, Tail... >::make( Node33( content ), tail );
 }
-
+// rule10 : Mod1 -> "O()" Mod2
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S9, S10, S8, Tail... > > const& src ) {
-  std::shared_ptr< Mod2 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod1 > content( new Rule10( arg1 ) );
-  std::shared_ptr< State< S8, Tail... > > const& tail = src->tail->tail;
-  return State< S7, S8, Tail... >::make( S7( content ), tail );
+auto reduce( std::shared_ptr< State< Node9, Node10, Node8, Tail... > > const& src ) {
+  Mod2 const& arg1 = src->tail->head.arg1;
+  Mod1 content( new Rule10( arg1 ) );
+  std::shared_ptr< State< Node8, Tail... > > const& tail = src->tail->tail;
+  return State< Node7, Node8, Tail... >::make( Node7( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S13, S14, S8, Tail... > > const& src ) {
-  std::shared_ptr< Mod3 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod1 > content( new Rule11( arg1 ) );
-  std::shared_ptr< State< S8, Tail... > > const& tail = src->tail->tail;
-  return State< S7, S8, Tail... >::make( S7( content ), tail );
+auto reduce( std::shared_ptr< State< Node9, Node10, Node11, Tail... > > const& src ) {
+  Mod2 const& arg1 = src->tail->head.arg1;
+  Mod1 content( new Rule10( arg1 ) );
+  std::shared_ptr< State< Node11, Tail... > > const& tail = src->tail->tail;
+  return State< Node24, Node11, Tail... >::make( Node24( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S15, S16, S10, Tail... > > const& src ) {
-  std::shared_ptr< Mod4 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod2 > content( new Rule20( arg1 ) );
-  std::shared_ptr< State< S10, Tail... > > const& tail = src->tail->tail;
-  return State< S9, S10, Tail... >::make( S9( content ), tail );
+auto reduce( std::shared_ptr< State< Node9, Node10, Node12, Tail... > > const& src ) {
+  Mod2 const& arg1 = src->tail->head.arg1;
+  Mod1 content( new Rule10( arg1 ) );
+  std::shared_ptr< State< Node12, Tail... > > const& tail = src->tail->tail;
+  return State< Node34, Node12, Tail... >::make( Node34( content ), tail );
 }
-
+// rule11 : Mod1 -> "I()" Mod3
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S18, S19, S10, Tail... > > const& src ) {
-  std::shared_ptr< Mod5 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod2 > content( new Rule21( arg1 ) );
-  std::shared_ptr< State< S10, Tail... > > const& tail = src->tail->tail;
-  return State< S9, S10, Tail... >::make( S9( content ), tail );
+auto reduce( std::shared_ptr< State< Node13, Node14, Node8, Tail... > > const& src ) {
+  Mod3 const& arg1 = src->tail->head.arg1;
+  Mod1 content( new Rule11( arg1 ) );
+  std::shared_ptr< State< Node8, Tail... > > const& tail = src->tail->tail;
+  return State< Node7, Node8, Tail... >::make( Node7( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S9, S10, S11, Tail... > > const& src ) {
-  std::shared_ptr< Mod2 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod1 > content( new Rule10( arg1 ) );
-  std::shared_ptr< State< S11, Tail... > > const& tail = src->tail->tail;
-  return State< S24, S11, Tail... >::make( S24( content ), tail );
+auto reduce( std::shared_ptr< State< Node13, Node14, Node11, Tail... > > const& src ) {
+  Mod3 const& arg1 = src->tail->head.arg1;
+  Mod1 content( new Rule11( arg1 ) );
+  std::shared_ptr< State< Node11, Tail... > > const& tail = src->tail->tail;
+  return State< Node24, Node11, Tail... >::make( Node24( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S13, S14, S11, Tail... > > const& src ) {
-  std::shared_ptr< Mod3 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod1 > content( new Rule11( arg1 ) );
-  std::shared_ptr< State< S11, Tail... > > const& tail = src->tail->tail;
-  return State< S24, S11, Tail... >::make( S24( content ), tail );
+auto reduce( std::shared_ptr< State< Node13, Node14, Node12, Tail... > > const& src ) {
+  Mod3 const& arg1 = src->tail->head.arg1;
+  Mod1 content( new Rule11( arg1 ) );
+  std::shared_ptr< State< Node12, Tail... > > const& tail = src->tail->tail;
+  return State< Node34, Node12, Tail... >::make( Node34( content ), tail );
 }
-
+// rule20 : Mod2 -> "O()" Mod4
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S9, S10, S12, Tail... > > const& src ) {
-  std::shared_ptr< Mod2 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod1 > content( new Rule10( arg1 ) );
-  std::shared_ptr< State< S12, Tail... > > const& tail = src->tail->tail;
-  return State< S34, S12, Tail... >::make( S34( content ), tail );
+auto reduce( std::shared_ptr< State< Node15, Node16, Node10, Tail... > > const& src ) {
+  Mod4 const& arg1 = src->tail->head.arg1;
+  Mod2 content( new Rule20( arg1 ) );
+  std::shared_ptr< State< Node10, Tail... > > const& tail = src->tail->tail;
+  return State< Node9, Node10, Tail... >::make( Node9( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S13, S14, S12, Tail... > > const& src ) {
-  std::shared_ptr< Mod3 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod1 > content( new Rule11( arg1 ) );
-  std::shared_ptr< State< S12, Tail... > > const& tail = src->tail->tail;
-  return State< S34, S12, Tail... >::make( S34( content ), tail );
+auto reduce( std::shared_ptr< State< Node15, Node16, Node17, Tail... > > const& src ) {
+  Mod4 const& arg1 = src->tail->head.arg1;
+  Mod2 content( new Rule20( arg1 ) );
+  std::shared_ptr< State< Node17, Tail... > > const& tail = src->tail->tail;
+  return State< Node26, Node17, Tail... >::make( Node26( content ), tail );
 }
-
+// rule21 : Mod2 -> "I()" Mod5
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S20, S21, S14, Tail... > > const& src ) {
-  std::shared_ptr< Mod6 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod3 > content( new Rule30( arg1 ) );
-  std::shared_ptr< State< S14, Tail... > > const& tail = src->tail->tail;
-  return State< S13, S14, Tail... >::make( S13( content ), tail );
+auto reduce( std::shared_ptr< State< Node18, Node19, Node10, Tail... > > const& src ) {
+  Mod5 const& arg1 = src->tail->head.arg1;
+  Mod2 content( new Rule21( arg1 ) );
+  std::shared_ptr< State< Node10, Tail... > > const& tail = src->tail->tail;
+  return State< Node9, Node10, Tail... >::make( Node9( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S23, S4, S14, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod3 > content( new Rule31( arg1 ) );
-  std::shared_ptr< State< S14, Tail... > > const& tail = src->tail->tail;
-  return State< S13, S14, Tail... >::make( S13( content ), tail );
+auto reduce( std::shared_ptr< State< Node18, Node19, Node17, Tail... > > const& src ) {
+  Mod5 const& arg1 = src->tail->head.arg1;
+  Mod2 content( new Rule21( arg1 ) );
+  std::shared_ptr< State< Node17, Tail... > > const& tail = src->tail->tail;
+  return State< Node26, Node17, Tail... >::make( Node26( content ), tail );
 }
-
+// rule30 : Mod3 -> "O()" Mod6
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S24, S11, S16, Tail... > > const& src ) {
-  std::shared_ptr< Mod1 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod4 > content( new Rule40( arg1 ) );
-  std::shared_ptr< State< S16, Tail... > > const& tail = src->tail->tail;
-  return State< S15, S16, Tail... >::make( S15( content ), tail );
+auto reduce( std::shared_ptr< State< Node20, Node21, Node14, Tail... > > const& src ) {
+  Mod6 const& arg1 = src->tail->head.arg1;
+  Mod3 content( new Rule30( arg1 ) );
+  std::shared_ptr< State< Node14, Tail... > > const& tail = src->tail->tail;
+  return State< Node13, Node14, Tail... >::make( Node13( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S26, S17, S16, Tail... > > const& src ) {
-  std::shared_ptr< Mod2 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod4 > content( new Rule41( arg1 ) );
-  std::shared_ptr< State< S16, Tail... > > const& tail = src->tail->tail;
-  return State< S15, S16, Tail... >::make( S15( content ), tail );
+auto reduce( std::shared_ptr< State< Node20, Node21, Node22, Tail... > > const& src ) {
+  Mod6 const& arg1 = src->tail->head.arg1;
+  Mod3 content( new Rule30( arg1 ) );
+  std::shared_ptr< State< Node22, Tail... > > const& tail = src->tail->tail;
+  return State< Node27, Node22, Tail... >::make( Node27( content ), tail );
 }
-
+// rule31 : Mod3 -> "I()" Mod0
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S15, S16, S17, Tail... > > const& src ) {
-  std::shared_ptr< Mod4 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod2 > content( new Rule20( arg1 ) );
-  std::shared_ptr< State< S17, Tail... > > const& tail = src->tail->tail;
-  return State< S26, S17, Tail... >::make( S26( content ), tail );
+auto reduce( std::shared_ptr< State< Node23, Node4, Node14, Tail... > > const& src ) {
+  Mod0 const& arg1 = src->tail->head.arg1;
+  Mod3 content( new Rule31( arg1 ) );
+  std::shared_ptr< State< Node14, Tail... > > const& tail = src->tail->tail;
+  return State< Node13, Node14, Tail... >::make( Node13( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S18, S19, S17, Tail... > > const& src ) {
-  std::shared_ptr< Mod5 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod2 > content( new Rule21( arg1 ) );
-  std::shared_ptr< State< S17, Tail... > > const& tail = src->tail->tail;
-  return State< S26, S17, Tail... >::make( S26( content ), tail );
+auto reduce( std::shared_ptr< State< Node23, Node4, Node22, Tail... > > const& src ) {
+  Mod0 const& arg1 = src->tail->head.arg1;
+  Mod3 content( new Rule31( arg1 ) );
+  std::shared_ptr< State< Node22, Tail... > > const& tail = src->tail->tail;
+  return State< Node27, Node22, Tail... >::make( Node27( content ), tail );
 }
-
+// rule40 : Mod4 -> "O()" Mod1
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S27, S22, S19, Tail... > > const& src ) {
-  std::shared_ptr< Mod3 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod5 > content( new Rule50( arg1 ) );
-  std::shared_ptr< State< S19, Tail... > > const& tail = src->tail->tail;
-  return State< S18, S19, Tail... >::make( S18( content ), tail );
+auto reduce( std::shared_ptr< State< Node24, Node11, Node16, Tail... > > const& src ) {
+  Mod1 const& arg1 = src->tail->head.arg1;
+  Mod4 content( new Rule40( arg1 ) );
+  std::shared_ptr< State< Node16, Tail... > > const& tail = src->tail->tail;
+  return State< Node15, Node16, Tail... >::make( Node15( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S29, S25, S19, Tail... > > const& src ) {
-  std::shared_ptr< Mod4 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod5 > content( new Rule51( arg1 ) );
-  std::shared_ptr< State< S19, Tail... > > const& tail = src->tail->tail;
-  return State< S18, S19, Tail... >::make( S18( content ), tail );
+auto reduce( std::shared_ptr< State< Node24, Node11, Node25, Tail... > > const& src ) {
+  Mod1 const& arg1 = src->tail->head.arg1;
+  Mod4 content( new Rule40( arg1 ) );
+  std::shared_ptr< State< Node25, Tail... > > const& tail = src->tail->tail;
+  return State< Node29, Node25, Tail... >::make( Node29( content ), tail );
 }
-
+// rule41 : Mod4 -> "I()" Mod2
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S30, S28, S21, Tail... > > const& src ) {
-  std::shared_ptr< Mod5 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod6 > content( new Rule60( arg1 ) );
-  std::shared_ptr< State< S21, Tail... > > const& tail = src->tail->tail;
-  return State< S20, S21, Tail... >::make( S20( content ), tail );
+auto reduce( std::shared_ptr< State< Node26, Node17, Node16, Tail... > > const& src ) {
+  Mod2 const& arg1 = src->tail->head.arg1;
+  Mod4 content( new Rule41( arg1 ) );
+  std::shared_ptr< State< Node16, Tail... > > const& tail = src->tail->tail;
+  return State< Node15, Node16, Tail... >::make( Node15( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S32, S31, S21, Tail... > > const& src ) {
-  std::shared_ptr< Mod6 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod6 > content( new Rule61( arg1 ) );
-  std::shared_ptr< State< S21, Tail... > > const& tail = src->tail->tail;
-  return State< S20, S21, Tail... >::make( S20( content ), tail );
+auto reduce( std::shared_ptr< State< Node26, Node17, Node25, Tail... > > const& src ) {
+  Mod2 const& arg1 = src->tail->head.arg1;
+  Mod4 content( new Rule41( arg1 ) );
+  std::shared_ptr< State< Node25, Tail... > > const& tail = src->tail->tail;
+  return State< Node29, Node25, Tail... >::make( Node29( content ), tail );
 }
-
+// rule50 : Mod5 -> "O()" Mod3
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S20, S21, S22, Tail... > > const& src ) {
-  std::shared_ptr< Mod6 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod3 > content( new Rule30( arg1 ) );
-  std::shared_ptr< State< S22, Tail... > > const& tail = src->tail->tail;
-  return State< S27, S22, Tail... >::make( S27( content ), tail );
+auto reduce( std::shared_ptr< State< Node27, Node22, Node19, Tail... > > const& src ) {
+  Mod3 const& arg1 = src->tail->head.arg1;
+  Mod5 content( new Rule50( arg1 ) );
+  std::shared_ptr< State< Node19, Tail... > > const& tail = src->tail->tail;
+  return State< Node18, Node19, Tail... >::make( Node18( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S23, S4, S22, Tail... > > const& src ) {
-  std::shared_ptr< Mod0 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod3 > content( new Rule31( arg1 ) );
-  std::shared_ptr< State< S22, Tail... > > const& tail = src->tail->tail;
-  return State< S27, S22, Tail... >::make( S27( content ), tail );
+auto reduce( std::shared_ptr< State< Node27, Node22, Node28, Tail... > > const& src ) {
+  Mod3 const& arg1 = src->tail->head.arg1;
+  Mod5 content( new Rule50( arg1 ) );
+  std::shared_ptr< State< Node28, Tail... > > const& tail = src->tail->tail;
+  return State< Node30, Node28, Tail... >::make( Node30( content ), tail );
 }
-
+// rule51 : Mod5 -> "I()" Mod4
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S24, S11, S25, Tail... > > const& src ) {
-  std::shared_ptr< Mod1 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod4 > content( new Rule40( arg1 ) );
-  std::shared_ptr< State< S25, Tail... > > const& tail = src->tail->tail;
-  return State< S29, S25, Tail... >::make( S29( content ), tail );
+auto reduce( std::shared_ptr< State< Node29, Node25, Node19, Tail... > > const& src ) {
+  Mod4 const& arg1 = src->tail->head.arg1;
+  Mod5 content( new Rule51( arg1 ) );
+  std::shared_ptr< State< Node19, Tail... > > const& tail = src->tail->tail;
+  return State< Node18, Node19, Tail... >::make( Node18( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S26, S17, S25, Tail... > > const& src ) {
-  std::shared_ptr< Mod2 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod4 > content( new Rule41( arg1 ) );
-  std::shared_ptr< State< S25, Tail... > > const& tail = src->tail->tail;
-  return State< S29, S25, Tail... >::make( S29( content ), tail );
+auto reduce( std::shared_ptr< State< Node29, Node25, Node28, Tail... > > const& src ) {
+  Mod4 const& arg1 = src->tail->head.arg1;
+  Mod5 content( new Rule51( arg1 ) );
+  std::shared_ptr< State< Node28, Tail... > > const& tail = src->tail->tail;
+  return State< Node30, Node28, Tail... >::make( Node30( content ), tail );
 }
-
+// rule60 : Mod6 -> "O()" Mod5
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S27, S22, S28, Tail... > > const& src ) {
-  std::shared_ptr< Mod3 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod5 > content( new Rule50( arg1 ) );
-  std::shared_ptr< State< S28, Tail... > > const& tail = src->tail->tail;
-  return State< S30, S28, Tail... >::make( S30( content ), tail );
+auto reduce( std::shared_ptr< State< Node30, Node28, Node21, Tail... > > const& src ) {
+  Mod5 const& arg1 = src->tail->head.arg1;
+  Mod6 content( new Rule60( arg1 ) );
+  std::shared_ptr< State< Node21, Tail... > > const& tail = src->tail->tail;
+  return State< Node20, Node21, Tail... >::make( Node20( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S29, S25, S28, Tail... > > const& src ) {
-  std::shared_ptr< Mod4 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod5 > content( new Rule51( arg1 ) );
-  std::shared_ptr< State< S28, Tail... > > const& tail = src->tail->tail;
-  return State< S30, S28, Tail... >::make( S30( content ), tail );
+auto reduce( std::shared_ptr< State< Node30, Node28, Node31, Tail... > > const& src ) {
+  Mod5 const& arg1 = src->tail->head.arg1;
+  Mod6 content( new Rule60( arg1 ) );
+  std::shared_ptr< State< Node31, Tail... > > const& tail = src->tail->tail;
+  return State< Node32, Node31, Tail... >::make( Node32( content ), tail );
 }
-
+// rule61 : Mod6 -> "I()" Mod6
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S30, S28, S31, Tail... > > const& src ) {
-  std::shared_ptr< Mod5 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod6 > content( new Rule60( arg1 ) );
-  std::shared_ptr< State< S31, Tail... > > const& tail = src->tail->tail;
-  return State< S32, S31, Tail... >::make( S32( content ), tail );
+auto reduce( std::shared_ptr< State< Node32, Node31, Node21, Tail... > > const& src ) {
+  Mod6 const& arg1 = src->tail->head.arg1;
+  Mod6 content( new Rule61( arg1 ) );
+  std::shared_ptr< State< Node21, Tail... > > const& tail = src->tail->tail;
+  return State< Node20, Node21, Tail... >::make( Node20( content ), tail );
 }
-
 template< typename... Tail >
-auto reduce( std::shared_ptr< State< S32, S31, S31, Tail... > > const& src ) {
-  std::shared_ptr< Mod6 > const& arg1 = src->head.content;
-  std::shared_ptr< Mod6 > content( new Rule61( arg1 ) );
-  std::shared_ptr< State< S31, Tail... > > const& tail = src->tail->tail;
-  return State< S32, S31, Tail... >::make( S32( content ), tail );
+auto reduce( std::shared_ptr< State< Node32, Node31, Node31, Tail... > > const& src ) {
+  Mod6 const& arg1 = src->tail->head.arg1;
+  Mod6 content( new Rule61( arg1 ) );
+  std::shared_ptr< State< Node31, Tail... > > const& tail = src->tail->tail;
+  return State< Node32, Node31, Tail... >::make( Node32( content ), tail );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

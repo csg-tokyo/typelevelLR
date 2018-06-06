@@ -10,8 +10,8 @@ F::~F() noexcept {}
 T::~T() noexcept {}
 
 
-Add::Add( std::shared_ptr< E > const& arg1, std::shared_ptr< T > const& arg2 )
-  :std::tuple< std::shared_ptr< E >, std::shared_ptr< T > >( arg1, arg2 ) {}
+Add::Add( E const& arg1, T const& arg2 )
+  :std::tuple< E, T >( arg1, arg2 ) {}
 
 void Add::accept( Visitor& visitor ) {
   visitor.visitAdd( *this );
@@ -21,8 +21,8 @@ void Add::accept( ConstVisitor& visitor ) const {
 }
 
 
-TToE::TToE( std::shared_ptr< T > const& arg1 )
-  :std::tuple< std::shared_ptr< T > >( arg1 ) {}
+TToE::TToE( T const& arg1 )
+  :std::tuple< T >( arg1 ) {}
 
 void TToE::accept( Visitor& visitor ) {
   visitor.visitTToE( *this );
@@ -32,8 +32,8 @@ void TToE::accept( ConstVisitor& visitor ) const {
 }
 
 
-Num::Num( int const& arg1 )
-  :std::tuple< int >( arg1 ) {}
+Num::Num( Int const& arg1 )
+  :std::tuple< Int >( arg1 ) {}
 
 void Num::accept( Visitor& visitor ) {
   visitor.visitNum( *this );
@@ -43,8 +43,8 @@ void Num::accept( ConstVisitor& visitor ) const {
 }
 
 
-Paren::Paren( std::shared_ptr< E > const& arg1 )
-  :std::tuple< std::shared_ptr< E > >( arg1 ) {}
+Paren::Paren( E const& arg1 )
+  :std::tuple< E >( arg1 ) {}
 
 void Paren::accept( Visitor& visitor ) {
   visitor.visitParen( *this );
@@ -54,8 +54,8 @@ void Paren::accept( ConstVisitor& visitor ) const {
 }
 
 
-Mul::Mul( std::shared_ptr< T > const& arg1, std::shared_ptr< F > const& arg2 )
-  :std::tuple< std::shared_ptr< T >, std::shared_ptr< F > >( arg1, arg2 ) {}
+Mul::Mul( T const& arg1, F const& arg2 )
+  :std::tuple< T, F >( arg1, arg2 ) {}
 
 void Mul::accept( Visitor& visitor ) {
   visitor.visitMul( *this );
@@ -65,8 +65,8 @@ void Mul::accept( ConstVisitor& visitor ) const {
 }
 
 
-FToT::FToT( std::shared_ptr< F > const& arg1 )
-  :std::tuple< std::shared_ptr< F > >( arg1 ) {}
+FToT::FToT( F const& arg1 )
+  :std::tuple< F >( arg1 ) {}
 
 void FToT::accept( Visitor& visitor ) {
   visitor.visitFToT( *this );
@@ -127,12 +127,12 @@ std::ostream& operator <<( std::ostream &out, T const& self ) {
 
 
 std::ostream& operator <<( std::ostream& out, Add const& self ) {
-  out << "Add("<< *std::get< 0 >( self ) << ", "<< *std::get< 1 >( self ) << ")";
+  out << "Add("<<  std::get< 0 >( self ) << ", "<<  std::get< 1 >( self ) << ")";
   return out;
 }
 
 std::ostream& operator <<( std::ostream& out, TToE const& self ) {
-  out << "TToE("<< *std::get< 0 >( self ) << ")";
+  out << "TToE("<<  std::get< 0 >( self ) << ")";
   return out;
 }
 
@@ -142,51 +142,51 @@ std::ostream& operator <<( std::ostream& out, Num const& self ) {
 }
 
 std::ostream& operator <<( std::ostream& out, Paren const& self ) {
-  out << "Paren("<< *std::get< 0 >( self ) << ")";
+  out << "Paren("<<  std::get< 0 >( self ) << ")";
   return out;
 }
 
 std::ostream& operator <<( std::ostream& out, Mul const& self ) {
-  out << "Mul("<< *std::get< 0 >( self ) << ", "<< *std::get< 1 >( self ) << ")";
+  out << "Mul("<<  std::get< 0 >( self ) << ", "<<  std::get< 1 >( self ) << ")";
   return out;
 }
 
 std::ostream& operator <<( std::ostream& out, FToT const& self ) {
-  out << "FToT("<< *std::get< 0 >( self ) << ")";
+  out << "FToT("<<  std::get< 0 >( self ) << ")";
   return out;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-S1::S1( std::shared_ptr< E > const& content_ ) :content( content_ ) {}
+Node1::Node1() {}
 
-S2::S2() {}
+Node2::Node2( E const& content_ ) :content( content_ ) {}
 
-S3::S3( std::shared_ptr< T > const& content_ ) :content( content_ ) {}
+Node3::Node3( T const& content_ ) :content( content_ ) {}
 
-S4::S4() {}
+Node4::Node4() {}
 
-S5::S5() {}
+Node5::Node5() {}
 
-S6::S6( std::shared_ptr< E > const& content_ ) :content( content_ ) {}
+Node6::Node6( E const& content_ ) :content( content_ ) {}
 
-S7::S7( std::shared_ptr< T > const& content_ ) :content( content_ ) {}
+Node7::Node7( F const& content_ ) :content( content_ ) {}
 
-S8::S8( int const& content_ ) :content( content_ ) {}
+Node8::Node8( F const& content_ ) :content( content_ ) {}
 
-S9::S9() {}
+Node9::Node9() {}
 
-S10::S10() {}
+Node10::Node10( T const& content_ ) :content( content_ ) {}
 
-S11::S11( std::shared_ptr< F > const& content_ ) :content( content_ ) {}
+Node11::Node11( Int const& arg1_ ) :arg1( arg1_ ){}
 
-S12::S12( std::shared_ptr< F > const& content_ ) :content( content_ ) {}
+Node12::Node12() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr< State< S2 > > begin() {
+std::shared_ptr< State< Node1 > > begin() {
   std::shared_ptr< State<> > bottom( new State<>() );
-  return State< S2 >::make( S2(), bottom );
+  return State< Node1 >::make( Node1(), bottom );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

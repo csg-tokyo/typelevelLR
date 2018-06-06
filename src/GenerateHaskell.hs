@@ -7,21 +7,22 @@ module GenerateHaskell (module GenerateHaskell) where
 import Utility
 import Syntax
 import LALRAutomaton
+import CodeGenerateEnv
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Data.Monoid           (Endo())
 import Control.Monad         (forM_)
-import Data.Function         (fix)
-import Control.Monad.Writer  (MonadWriter())
-
+import Control.Monad.Reader
+import Control.Monad.Writer
+import Control.Monad.State
+import Data.Maybe            (mapMaybe)
 import Data.Either           (isRight)
+import Data.List             (groupBy)
+import Data.Function         (fix)
 
 -------------------------------------------------------------------------------
-
-newline :: (MonadWriter (Endo String) m) => m ()
-newline = tells "\n"
 
 tellSeparator :: (MonadWriter (Endo String) m) => m ()
 tellSeparator = tellsLn (replicate 79 '-')
@@ -29,93 +30,40 @@ tellSeparator = tellsLn (replicate 79 '-')
 -------------------------------------------------------------------------------
 
 tellHaskell :: (MonadWriter (Endo String) m) => Syntax -> m ()
-tellHaskell syntax = do
-  let moduleName = pascalCase (syntaxName syntax)
-  let automaton = lalrAutomaton syntax
-  let nodeInfo = buildNodeInfoTable automaton
-  newline
-  tellLanguageOptions
-  newline
-  tellsLn ("module " ++ moduleName ++ " where")
-  newline
-  tellSeparator
-  newline
-  tellGrammar syntax
-  newline
-  tellSeparator
-  newline
-  tellTypeProgramDefinition
-  newline
-  tellSeparator
-  newline
-  tellASTDefinition syntax
-  newline
-  tellSeparator
-  newline
-  tellTerminalMethodDefinitions syntax
-  newline
-  newline
-  tellAutomatonStates nodeInfo
-  newline
-  tellSeparator
-  newline
-  tellShiftTransitions automaton nodeInfo
-  newline
-  tellSeparator
-  newline
-  tellReduces automaton nodeInfo
-  newline
-  newline
-  tellReduceTransitions syntax
-  newline
-  tellSeparator
-  newline
-  tellInitialState automaton nodeInfo
-  newline
-  tellSeparator
-  newline
-  tellEnd automaton nodeInfo
-  newline
-  tellSeparator
-  newline
+tellHaskell syntax = let automaton = lalrAutomaton syntax in
+  (`runReaderT` buildCodeGenerateEnv syntax automaton) $ do
+    let moduleName = pascalCase (syntaxName syntax)
+    tellNewline
+    tellLanguageOptions
+    tellNewline
+    tellsLn ("module " ++ moduleName ++ " where")
+    tellNewline
+    tellSeparator
+    tellNewline
+    sequenceWithSep_ (tellNewline >> tellSeparator >> tellNewline) $
+      [tellGrammar,
+       tellTypeProgramDefinition,
+       tellASTDefinitions,
+       tellTerminalMethodDefinitions, tellAutomatonStates,
+       tellShiftTransitions,
+       tellReduces, -- tellReduceTransitions,
+       tellInitialState,
+       tellEnd]
+    tellNewline
+    tellSeparator
+    tellNewline
 
 -------------------------------------------------------------------------------
 
-data NodeInfo = NodeInfo { nodeName :: String,
-                           nodeType :: Symbol }
-  deriving (Show)
-
-buildNodeInfoTable :: LALRAutomaton -> Map.Map LRNode NodeInfo
-buildNodeInfoTable automaton = Map.fromList $ do
-  node <- Set.toList (lalrAutomatonNodes automaton)
-  let name = nodeName Map.! node
-  let typ  = Map.lookup node nodeType `orElse` Right EndOfInput
-  return (node, NodeInfo name typ)
-  where nodeName = buildNodeNameTable automaton
-        nodeType = buildNodeTypeTable automaton
-
-buildNodeNameTable :: LALRAutomaton -> Map.Map LRNode String
-buildNodeNameTable automaton = Map.fromList $
-  [(node, 'S' : show i) | (i, node) <- zip [1 ..] (Set.toList nodes)]
-  where nodes = lalrAutomatonNodes automaton
-
-buildNodeTypeTable :: LALRAutomaton -> Map.Map LRNode Symbol
-buildNodeTypeTable automaton = Map.fromListWithKey merge $
-  [(node, symbol) | (symbol, node) <- Map.elems edges >>= Map.toList]
-  where merge node a b = if a == b then a else error ("ambiguous node type for " ++ show node)
-        edges = lalrAutomatonEdges automaton
-
--------------------------------------------------------------------------------
-
-tellGrammar :: (MonadWriter (Endo String) m) => Syntax -> m ()
-tellGrammar syntax = do
+tellGrammar :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+               m ()
+tellGrammar = do
+  syntax <- syntax_
   tellsLn "-- grammar definition"
-  newline
-  forM_ (nonTerminals syntax) $ \nt -> do
-    forM_ (syntaxRules syntax nt) $ \(name, expr) -> do
-      tells ("-- " ++ name ++ " : " ++ nonTerminalName nt ++ " -> ")
-      tellExpr expr
-      newline
+  tellNewline
+  forM_ (syntaxNonTerminals syntax) $ \nt -> do
+    forM_ (syntaxRules syntax nt) $ \rule -> do
+      tells "-- " >> tellRule rule >> tellNewline
 
 -------------------------------------------------------------------------------
 
@@ -129,182 +77,187 @@ tellLanguageOptions = do
 tellTypeProgramDefinition :: (MonadWriter (Endo String) m) => m ()
 tellTypeProgramDefinition = do
   tellsLn "type Program r a = (a -> r) -> r"
-  newline
+  tellNewline
   tellsLn "program :: a -> Program r a"
   tellsLn "program a = \\k -> k a"
 
-tellASTDefinition :: (MonadWriter (Endo String) m) => Syntax -> m ()
-tellASTDefinition syntax = do
+-------------------------------------------------------------------------------
+
+tellASTDefinitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+                     m ()
+tellASTDefinitions = do
+  syntax <- syntax_
   tellsLn "-- AST nodes"
-  forM_ (nonTerminals syntax) $ \nt -> do
-    newline
-    tellsLn ("data " ++ typeName nt)
-    forM_ (zip ("  = " : repeat "  | ") (syntaxRules syntax nt)) $ \(header, (name, expr)) -> do
+  tellNewline
+  forMWithSep_ tellNewline (syntaxNonTerminals syntax) $ \nt -> do
+    tellsLn ("data " ++ pascalCase (nonTerminalName nt))
+    forM_ (zip ("  = " : repeat "  | ") (syntaxRules syntax nt)) $ \(header, rule) -> do
       tells header
-      tells (pascalCase name)
-      forM_ expr $ \case
-        Left  nt'           -> tells (" " ++ typeName nt')
-        Right StringLiteral -> tells " String"
-        Right IntLiteral    -> tells " Integer"
-        _                   -> return ()
-      newline
+      tells (pascalCase (ruleName rule))
+      forM_ (ruleParams rule) $ \param ->
+        tells " " >> tells param
+      tellNewline
     tellsLn "  deriving (Show)"
 
 -------------------------------------------------------------------------------
 
-tellTerminalMethodDefinitions :: (MonadWriter (Endo String) m) => Syntax -> m ()
-tellTerminalMethodDefinitions syntax = do
+tellTerminalMethodDefinitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+                                 m ()
+tellTerminalMethodDefinitions = do
+  syntax <- syntax_
   tellsLn "-- terminal symbols"
-  newline
-  forMWithSep_ newline (terminals syntax) $ \case
-    Keyword key -> do
-      let methodName = camelCase key
-      let className = pascalCase methodName ++ "Transition"
-      tellsLn ("class " ++ className ++ " s t | s -> t where")
-      tellsLn ("  " ++ methodName ++ " :: s -> Program r t")
-    StringLiteral ->  do
-      tellsLn "class StrTransition s t | s -> t where"
-      tellsLn "  str :: s -> String -> Program r t"
-    IntLiteral -> do
-      tellsLn "class IntTransition s t | s -> t where"
-      tellsLn "  int :: s -> Integer -> Program r t"
+  tellNewline
+  forMWithSep_ tellNewline (syntaxTerminals syntax) $ \case
+    UserTerminal name params -> do
+      tellsLn ("class " ++ pascalCase name ++ "Transition s t | s -> t where")
+      tells ("  " ++ camelCase name ++ " :: s")
+      forM_ params $ \param -> tells " -> " >> tells param
+      tellsLn " -> Program r t"
     t -> error ("invalid terminal symbol found -- " ++ show t)
 
-tellAutomatonStates :: (MonadWriter (Endo String) m) =>
-                       Map.Map LRNode NodeInfo -> m ()
-tellAutomatonStates nodeInfo = do
+-------------------------------------------------------------------------------
+
+tellAutomatonStates :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+                       m ()
+tellAutomatonStates = do
+  nodes <- nodes_
   tellsLn "-- automaton states"
-  newline
-  forMWithSep_ newline (Map.toList nodeInfo) $ \(node, NodeInfo name typ) -> do
+  tellNewline
+  forMWithSep_ tellNewline nodes $ \(node, name, typ) -> do
     tells ("data " ++ name ++ " prev = " ++ name ++ " prev")
     case typ of
-      Left nt -> tells (" " ++ typeName nt)
-      Right StringLiteral -> tells " String"
-      Right IntLiteral    -> tells " Integer"
+      NonTerminalSymbol nt -> tells " " >> tells (pascalCase (nonTerminalName nt))
+      TerminalSymbol (UserTerminal name params) -> do
+        forM_ params (\param -> tells " " >> tells param)
       _       -> return ()
-    newline
+    tellNewline
 
-tellShiftTransitions :: (MonadWriter (Endo String) m) =>
-                        LALRAutomaton -> Map.Map LRNode NodeInfo -> m ()
-tellShiftTransitions automaton nodeInfo = do
+-------------------------------------------------------------------------------
+
+tellShiftTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+                        m ()
+tellShiftTransitions = do
   tellsLn "-- shift transitions"
-  newline
-  let edges = lalrAutomatonEdges automaton
-  let transitions = filter (not . null . snd) $ do
-        (src, dsts) <- Map.toList edges
-        return (src, filter (isRight . fst) (Map.toList dsts))
-  forMWithSep_ (newline >> newline) transitions $ \(src, dsts) -> do
-    forMWithSep_ newline dsts $ \(symbol, dst) -> do
-      let srcName = nodeName (nodeInfo Map.! src)
-      let dstName = nodeName (nodeInfo Map.! dst)
-      let (methodName, methodArg) = case symbol of
-            Right (Keyword key) -> (camelCase key, "")
-            Right StringLiteral -> ("str", " s")
-            Right IntLiteral    -> ("int", " i")
-            -- _                   -> (False, undefined, undefined)
-      let className = pascalCase methodName ++ "Transition"
-      tells ("instance {-# OVERLAPS #-} " ++ className ++ " ")
-      tells ("(" ++ srcName ++ " prev) ")
-      tellsLn ("(" ++ dstName ++ " (" ++ srcName ++ " prev)) where")
-      tells ("  " ++ methodName ++ " prev" ++ methodArg ++ " = ")
-      tellsLn ("program (" ++ dstName ++ " prev" ++ methodArg ++ ")")
+  tellNewline
+  automaton <- automaton_
+  let shiftEdges = groupBy (equaling fst) (shifts automaton)
+  forMWithSep_ (tellNewline >> tellNewline) shiftEdges $ \edges -> do
+    forMWithSep_ tellNewline edges $ \(terminal, (src, dst)) -> do
+      case terminal of
+        UserTerminal name params -> do
+          let className  = pascalCase name ++ "Transition"
+          let methodName = camelCase name
+          (srcName, dstName) <- (,) <$> nodeName_ src <*> nodeName_ dst
+          tells ("instance {-# OVERLAPS #-} " ++ className ++ " ")
+          tells ("(" ++ srcName ++ " prev) ")
+          tellsLn ("(" ++ dstName ++ " (" ++ srcName ++ " prev)) where")
+          tells ("  " ++ methodName ++ " prev")
+          forM_ (zip [1 ..] params) $ \(i, param) -> tells (" x" ++ show i)
+          tells (" = program (" ++ dstName ++ " prev")
+          forM_ (zip [1 ..] params) $ \(i, param) -> tells (" x" ++ show i)
+          tellsLn ")"
+        _ -> error "unexpected EndOfInput"
 
-tellReduces :: (MonadWriter (Endo String) m) =>
-               LALRAutomaton -> Map.Map LRNode NodeInfo -> m ()
-tellReduces automaton nodeInfo = do
+-------------------------------------------------------------------------------
+
+tellReduces :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+               m ()
+tellReduces = do
+  let getParams symbol = case symbol of
+        NonTerminalSymbol nt -> [camelCase (nonTerminalName nt)]
+        TerminalSymbol (UserTerminal name params) -> params
+        TerminalSymbol EndOfInput                 -> []
+  let tellNode nodes paramHandler = execStateT (loop nodes) 0
+        where loop nodes = case nodes of
+                []          -> tells "prev"
+                node : rest -> do
+                  NodeInfo name typ <- nodeInfo_ node
+                  tells "(" >> tells name >> tells " " >> loop rest
+                  forM_ (getParams typ) $ \paramType -> do
+                    i <- modify (+ 1) >> get
+                    paramHandler i paramType
+                  tells ")"
   tellsLn "-- reduces"
-  newline
+  tellNewline
   tellsLn "class Reduce s t | s -> t where"
   tellsLn "  reduce :: s -> t"
-  newline
-  newline
-  forMWithSep_ newline (reduces automaton) $ \(src, ruleName, dst) -> do
-    let baseName = nodeName (nodeInfo Map.! last src)
-    tells "instance Reduce"
-    flip fix src $ \loop ss -> case ss of
-      []      -> tells " prev"
-      s : ss' -> let name = nodeName (nodeInfo Map.! s) in
-        tells " (" >> tells name >> loop ss' >> tells ")"
-    let dstName = nodeName (nodeInfo Map.! dst)
-    tellsLn (" (" ++ dstName ++ " (" ++ baseName ++ " prev)) where")
-    tells "  reduce"
-    nParam <- flip fix (init src) $ \loop ss -> case ss of
-      []      -> 0 <$ tells " prev"
-      s : ss' -> do
-        let NodeInfo name typ = nodeInfo Map.! s
-        tells (" (" ++ name)
-        i <- loop ss'
-        let hasParam = case typ of
-              Left  _             -> True
-              Right StringLiteral -> True
-              Right IntLiteral    -> True
-              _                   -> False
-        if hasParam
-          then (i + 1) <$ tells (" p" ++ show (i + 1) ++ ")")
-          else i       <$ tells ")"
-    tells (" = " ++ dstName ++ " prev (" ++ pascalCase ruleName)
-    forM_ [1 .. nParam] $ \i -> tells (" p" ++ show i)
-    tellsLn ")"
+  tellNewline
+  nonTerminals <- syntaxNonTerminals <$> syntax_
+  forM_ nonTerminals $ \nt -> do
+    rules <- syntaxRules <$> syntax_ <*> pure nt
+    forM_ rules $ \rule -> do
+      tellNewline
+      tells "-- " >> tellRule rule
+      tellNewline
+      reduceEdges <- reduces <$> automaton_ <*> pure rule
+      forM_ reduceEdges $ \(src, dst) -> do
+        tellNewline
+        tells "instance Reduce "
+        tellNode (reverse src) $ \_ _ -> return ()
+        tells " "
+        tellNode (reverse dst) $ \_ _ -> return ()
+        tellsLn " where"
 
--------------------------------------------------------------------------------
+        tells "  reduce "
+        nParams <- tellNode (init (reverse src)) $ \i _ -> tells " x" >> tellsShow i
+        tells " = "
+        tellNode (init (reverse dst)) $ \i _ -> case i of
+          1 -> do
+            tells " (" >> tells (pascalCase (ruleName rule))
+            forM_ [1 .. nParams] $ \j ->
+              tells " x" >> tellsShow j
+            tells ")"
+          _ -> error "broken reduce destination path"
+        tellNewline
+      when (not (null reduceEdges)) tellNewline
 
-tellReduceTransitions :: (MonadWriter (Endo String) m) => Syntax -> m ()
-tellReduceTransitions syntax = do
+  tellNewline
   tellsLn "-- Reduce -> Transition"
-  newline
-  forMWithSep_ newline (terminals syntax) $ \case
-    Keyword key -> do
-      let methodName = camelCase key
-      let className = pascalCase methodName ++ "Transition"
-      tellsLn ("instance {-# OVERLAPS #-} (Reduce r s, " ++ className ++ " s t) =>")
-      tellsLn ("    " ++ className ++ " r t where")
-      tellsLn ("  " ++ methodName ++ " r = " ++ methodName ++ " (reduce r)")
-    StringLiteral -> do
-      tellsLn "instance {-# OVERLAPS #-} (Reduce r s, StrTransition s t) =>"
-      tellsLn "    StrTransition r t where"
-      tellsLn "  str r s = str (reduce r) s"
-    IntLiteral -> do
-      tellsLn "instance {-# OVERLAPS #-} (Reduce r s, IntTransition s t) =>"
-      tellsLn "    IntTransition r t where"
-      tellsLn "  int r s = int (reduce r) s"
+  tellNewline
+  terminals <- syntaxTerminals <$> syntax_
+  forMWithSep_ tellNewline terminals $ \case
+    UserTerminal name params -> do
+      let className  = pascalCase name ++ "Transition"
+      let methodName = camelCase  name
+      tells   ("instance {-# OVERLAPS #-} (Reduce r s, " ++ className ++ " s t)")
+      tellsLn (" => " ++ className ++ " r t where")
+      tells   ("  " ++ methodName ++ " r")
+      forM_ (zip [1 ..] params) $ \(i, _) -> tells " x" >> tellsShow i
+      tells   (" = " ++ methodName ++ " (reduce r)")
+      forM_ (zip [1 ..] params) $ \(i, _) -> tells " x" >> tellsShow i
+      tellNewline
+    _ -> error "unexpected EndOfInput"
 
 -------------------------------------------------------------------------------
 
-tellInitialState :: (MonadWriter (Endo String) m) =>
-                    LALRAutomaton -> Map.Map LRNode NodeInfo -> m ()
-tellInitialState automaton nodeInfo = do
-  let initName = nodeName (nodeInfo Map.! lalrAutomatonStart automaton)
+tellInitialState :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+                    m ()
+tellInitialState = do
+  start    <- lrAutomatonStart <$> automaton_
+  initName <- nodeName_ start
   tellsLn "-- initial state"
-  newline
+  tellNewline
   tellsLn ("begin :: Program r (" ++ initName ++ " ())")
   tellsLn ("begin = program (" ++ initName ++ " ())")
 
 -------------------------------------------------------------------------------
 
-tellEnd :: (MonadWriter (Endo String) m) =>
-           LALRAutomaton -> Map.Map LRNode NodeInfo -> m ()
-tellEnd automaton nodeInfo = do
+tellEnd :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+           m ()
+tellEnd = do
   tellsLn "class End s r | s -> r where"
   tellsLn "  end :: s -> r"
-  newline
-  let nodes = Set.toList (lalrAutomatonNodes automaton)
-  let endable (LRItem nt _ _ rest) = nt == StartSymbol && null rest
-  forMWithSep_ newline (filter (any endable) nodes) $ \node -> do
-    let NodeInfo name (Left nt) = nodeInfo Map.! node
-    tells "instance {-# OVERLAPS #-} End"
-    tells (" (" ++ name ++ " prev)")
+  tellNewline
+  nodes <- map (\(node, _, _) -> node) <$> nodes_
+  forMWithSep_ tellNewline (filter acceptible nodes) $ \node -> do
+    NodeInfo name (NonTerminalSymbol nt) <- nodeInfo_ node
+    tells    "instance {-# OVERLAPS #-} End"
+    tells   (" (" ++ name ++ " prev)")
     tellsLn (" " ++ pascalCase (nonTerminalName nt) ++ " where")
     tellsLn ("  end (" ++ name ++ " _ r) = r")
-  newline
+  tellNewline
   tellsLn "instance {-# OVERLAPS #-} (Reduce r s, End s t) => End r t where"
   tellsLn "  end r = end (reduce r)"
 
 -------------------------------------------------------------------------------
 
-typeName :: NonTerminal -> String
-typeName nt = pascalCase (nonTerminalName nt)
-
-varName :: NonTerminal -> String
-varName nt = camelCase (nonTerminalName nt)
-
--------------------------------------------------------------------------------

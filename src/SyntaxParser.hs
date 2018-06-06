@@ -27,51 +27,47 @@ trySepBy a sep = (:) <$> a <*> many (try (sep *> a))
 parseSyntax :: (Stream s m Char) => ParsecT s u m Syntax
 parseSyntax = do
   name <- ws' *> string "syntax" *> ws *> parseIdentifier
-  ws'
-  start <- string "(" *> ws' *> parseNonTerminal <* ws' <* string ")"
-  ws'
-  rules <- string "{" *> ws' *> parseRuleDefs <* many (() <$ space <|> sep) <* string "}"
+  start <- ws' *> string "(" *> ws' *> parseNonTerminal <* ws' <* string ")"
+  rules <- ws' *> string "{" *> ws' *> parseRules
+  many (() <$ space <|> sep) <* string "}"
   return (syntax name start rules)
-  
 
-parseRuleDefs :: (Stream s m Char) => ParsecT s u m [(NonTerminal, Rule)]
-parseRuleDefs = trySepBy parseRuleDef (manyTill space (try sep))
+parseRules :: (Stream s m Char) => ParsecT s u m [Rule]
+parseRules = trySepBy parseRule (manyTill space (try sep))
 
-parseRuleDef :: (Stream s m Char) => ParsecT s u m (NonTerminal, Rule)
-parseRuleDef = do
+parseRule :: (Stream s m Char) => ParsecT s u m Rule
+parseRule = do
   many (() <$ space <|> sep)
   name <- parseIdentifier
   ws' *> string ":" *> ws'
-  nt <- parseNonTerminal
+  lhs <- parseNonTerminal
   ws' *> (string "=" <|> string "->") *> ws'
-  symbols <- parseDerivation
-  return (nt, [(name, symbols)])
+  rhs <- parseDerivation
+  return (Rule name lhs rhs)
 
 parseDerivation :: (Stream s m Char) => ParsecT s u m [Symbol]
 parseDerivation  =  [] <$ string "eps"
                 <|> trySepBy (ws' *> parseSymbol) (notFollowedBy (ws' *> parseIdentifier *> ws' *> (string ":")))
 
 parseSymbol :: (Stream s m Char) => ParsecT s u m Symbol
-parseSymbol  =  Right <$> try parseTerminal  -- id, int, eps are priored
-            <|> Left  <$> parseNonTerminal
+parseSymbol  =  NonTerminalSymbol <$> try parseNonTerminal
+            <|> TerminalSymbol    <$> parseTerminal
             -- <|> string "(" *> ws' *> parseBranch <* ws' <* string ")"
 
 parseNonTerminal :: (Stream s m Char) => ParsecT s u m NonTerminal
-parseNonTerminal = NonTerminal <$> parseIdentifier
+parseNonTerminal = UserNonTerminal <$> parseIdentifier
 
 parseTerminal :: (Stream s m Char) => ParsecT s u m Terminal
-parseTerminal  =  try parseKeyword
-              <|> try parseStringLiteral
-              <|> parseIntLiteral
-
-parseKeyword :: (Stream s m Char) => ParsecT s u m Terminal
-parseKeyword = Keyword <$ string "\"" <*> parseIdentifier <* string "\""
-
-parseStringLiteral :: (Stream s m Char) => ParsecT s u m Terminal
-parseStringLiteral = StringLiteral <$ string "str"
-
-parseIntLiteral :: (Stream s m Char) => ParsecT s u m Terminal
-parseIntLiteral = IntLiteral <$ string "int"
+parseTerminal = do
+  string "\""
+  name <- parseIdentifier
+  params <- option [] $ do
+    string "(" *> ws'
+    params <- option [] (trySepBy parseIdentifier (ws' *> string "," *> ws'))
+    ws' <* string ")"
+    return params
+  string "\""
+  return (UserTerminal name params)
 
 parseIdentifier :: (Stream s m Char) => ParsecT s u m String
 parseIdentifier = many1 (satisfy isIdentifierChar)

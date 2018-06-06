@@ -9,179 +9,173 @@ import Utility
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Data.Monoid           (Endo(appEndo))
-import Control.Monad         (forM_, mzero)
-import Control.Monad.Writer  (MonadWriter(), execWriter)
-import Control.Arrow         ((***))
-import Data.Maybe            (fromJust)
+import Control.Monad         (forM_, mzero, (<=<), when, unless, foldM)
+import Control.Monad.Writer  (MonadWriter(), tell, execWriter)
+import Data.List             (nub, sort)
+import Data.Maybe            (mapMaybe)
+import Data.Monoid           (Endo(), (<>))
 
 -------------------------------------------------------------------------------
 
-data LRItem = LRItem {
-  lrItemNonTerminal :: NonTerminal,
-  lrItemRuleName    :: String,
-  lrItemExpression  :: [Symbol],
-  lrItemRest        :: [Symbol]
-} deriving (Eq, Ord)
+data LRAutomaton = LRAutomaton {
+  lrAutomatonStart      :: LRNode,
+  lrAutomatonEdgesTable :: Map.Map LRNode (Map.Map Symbol LRNode)
+} deriving (Eq)
+
+data LRNode = LRNode { getLRNode :: Map.Map LRItem (Set.Set Terminal) }
+  deriving (Eq, Ord)
+
+data LRItem = LRItem { lrItemRule :: Rule,
+                       lrItemRest :: [Symbol] }
+  deriving (Eq, Ord)
+
+-------------------------------------------------------------------------------
+
+lrAutomatonEdges :: LRAutomaton -> LRNode -> [(Symbol, LRNode)]
+lrAutomatonEdges automaton node = maybe [] Map.toList (Map.lookup node table)
+  where table = lrAutomatonEdgesTable automaton
+
+lrAutomatonNodes :: LRAutomaton -> [LRNode]
+lrAutomatonNodes automaton = nub ([start] ++ lhsNodes ++ rhsNodes)
+  where start = lrAutomatonStart automaton
+        lhsNodes = Map.keys (lrAutomatonEdgesTable automaton)
+        rhsNodes = (Map.elems <=< Map.elems) (lrAutomatonEdgesTable automaton)
+
+-------------------------------------------------------------------------------
+
+lrItem :: Rule -> LRItem
+lrItem rule = LRItem rule (ruleRhs rule)
+
+lrItemNext :: LRItem -> Maybe (Symbol, LRItem)
+lrItemNext item = case lrItemRest item of
+  []             -> Nothing
+  symbol : rest' -> Just (symbol, LRItem (lrItemRule item) rest')
+
+-------------------------------------------------------------------------------
+
+lrNodeItems :: LRNode -> [(LRItem, Set.Set Terminal)]
+lrNodeItems node = Map.toList (getLRNode node)
+
+instance Monoid LRNode where
+  mempty  = LRNode Map.empty
+  mappend node1 node2 = LRNode (Map.unionWith Set.union (getLRNode node1) (getLRNode node2))
+
+leadingNonTerminals :: LRNode -> [(NonTerminal, [Symbol], Set.Set Terminal)]
+leadingNonTerminals node = mapMaybe search (lrNodeItems node)
+  where search (item, la) = case lrItemRest item of
+          NonTerminalSymbol nt : rest -> Just (nt, rest, la)
+          _                           -> Nothing
+
+lrNode :: Syntax -> FirstSetTable -> LRItem -> Set.Set Terminal -> LRNode
+lrNode syntax table item la = complement (LRNode (Map.singleton item la))
+  where complement = fixPoint (\node -> node <> grow node)
+        grow node = foldMap LRNode $ do
+          (nt, rest, la) <- leadingNonTerminals node
+          rule <- syntaxRules syntax nt
+          return (Map.singleton (lrItem rule) (firstSet syntax table la rest))
+
+initialLRNode :: Syntax -> FirstSetTable -> LRNode
+initialLRNode syntax table = lrNode syntax table (lrItem startRule) (Set.singleton EndOfInput)
+  where startRule = Rule "(StartRule)" StartSymbol [NonTerminalSymbol (syntaxStart syntax)]
+
+lrTransitions :: Syntax -> FirstSetTable -> LRNode -> Map.Map Symbol LRNode
+lrTransitions syntax table src = Map.fromListWith mappend $ do
+  (item, la)      <- lrNodeItems src
+  (symbol, item') <- maybe [] return (lrItemNext item)
+  return (symbol, lrNode syntax table item' la)
+
+-------------------------------------------------------------------------------
+
+lr1Automaton :: Syntax -> LRAutomaton
+lr1Automaton syntax = fixPoint grow seed
+  where table          = buildFirstSetTable syntax
+        seed           = LRAutomaton (initialLRNode syntax table) Map.empty
+        grow automaton = LRAutomaton (lrAutomatonStart automaton) $
+          Map.fromListWith (Map.unionWith mappend) $
+            [(node, lrTransitions syntax table node) |
+             node <- lrAutomatonNodes automaton]
+
+lalrAutomaton :: Syntax -> LRAutomaton
+lalrAutomaton syntax = mergeLRAutomatonNodes (lr1Automaton syntax)
+
+mergeLRAutomatonNodes :: LRAutomaton -> LRAutomaton
+mergeLRAutomatonNodes automaton = LRAutomaton start edges
+  where mergeGroups = Map.fromListWith (++) $
+          [(Set.fromList (map fst (lrNodeItems node)), [node]) |
+           node <- lrAutomatonNodes automaton]
+        mergeTable = Map.fromList $
+          [(node, mconcat group) | group <- Map.elems mergeGroups, node <- group]
+        start = mergeTable Map.! lrAutomatonStart automaton
+        edges = Map.mapKeysWith (Map.unionWith assertEq) (mergeTable Map.!) (fmap (fmap (mergeTable Map.!)) (lrAutomatonEdgesTable automaton))
+
+-- (v -> v -> Bool) -> [v] -> [[v]]
+-- (Monoid v) => [[v]] -> Map.Map v v
+
+-------------------------------------------------------------------------------
+
+shifts :: LRAutomaton -> [(Terminal, (LRNode, LRNode))]
+shifts automaton = sort $ do
+  (src, dsts)   <- Map.toList (lrAutomatonEdgesTable automaton)
+  (symbol, dst) <- Map.toList dsts
+  case symbol of
+    TerminalSymbol t -> return (t, (src, dst))
+    _                -> mzero
+
+reduces :: LRAutomaton -> Rule -> [([LRNode], [LRNode])]
+reduces automaton rule =
+  [(path node (ruleRhs rule), path node [NonTerminalSymbol (ruleLhs rule)]) |
+   node <- lrAutomatonNodes automaton,
+   any (== lrItem rule) [item | (item, _) <- lrNodeItems node]]
+  where path = scanl $ \node symbol ->
+          lrAutomatonEdgesTable automaton Map.! node Map.! symbol
+
+acceptible :: LRNode -> Bool
+acceptible node = or [ruleLhs (lrItemRule item) == StartSymbol &&
+                      null (lrItemRest item)
+                     | item <- Map.keys (getLRNode node)]
+
+-------------------------------------------------------------------------------
+
+tellLRItem :: (MonadWriter (Endo String) m) => LRItem -> m ()
+tellLRItem (LRItem rule rest) = do
+  let dones = take (length (ruleRhs rule) - length rest) (ruleRhs rule)
+  tells (ruleName rule) >> tells " : "
+  tellNonTerminal (ruleLhs rule) >> tells " -> "
+  forM_ dones $ \done -> tellSymbol done >> tells " "
+  tells "."
+  forM_ rest $ \symbol -> tells " " >> tellSymbol symbol
+
+tellLRNode :: (MonadWriter (Endo String) m) => LRNode -> m ()
+tellLRNode (LRNode node) = do
+  tells "["
+  forMWithSep_ (tells "; ") (Map.toList node) $ \(lrItem, la) -> do
+    tellLRItem lrItem
+    tells " [" >> mapMWithSep_ (tells ", ") tellTerminal la >> tells "]"
+  tells "]"
+
+tellLRAutomaton :: (MonadWriter (Endo String) m) => LRAutomaton -> m ()
+tellLRAutomaton automaton = do
+  tellsLn "automaton {"
+  forM_ (Map.toList (lrAutomatonEdgesTable automaton)) $ \(src, dsts) -> do
+    tells " * " >> tellLRNode src
+    when (src == lrAutomatonStart automaton) (tells "  <-- start")
+    tellNewline
+    forM_ (Map.toList dsts) $ \(symbol, dst) -> do
+      tells "   - " >> tellSymbol symbol >> tells " -> " >> tellLRNode dst >> tellNewline
+  tells   "}"
 
 -------------------------------------------------------------------------------
 
 instance Show LRItem where
-  showsPrec _ (LRItem nt ruleName expr rest) = appEndo $ execWriter $ do
-    tells "LRItem("
-    tells ruleName
-    tells " : "
-    tells (nonTerminalName nt)
-    tells " -> "
-    let (fs, bs) = splitAt (length expr - length rest) expr
-    forM_ fs $ \symbol -> tellSymbol symbol >> tells " "
-    tells "."
-    forM_ rest $ \symbol -> tells " " >> tellSymbol symbol
-    tells ")"
+  showsPrec d lrItem =
+    showString "LRItem[" . tolds (tellLRItem lrItem) . showString "]"
 
--------------------------------------------------------------------------------
+instance Show LRNode where
+  showsPrec d lrNode = showParen (d > 10) $
+    showString "LRNode" . tolds (tellLRNode lrNode)
 
-type LRClosure = Map.Map LRItem (Set.Set Terminal)
-
-mergeLRClosure :: LRClosure -> LRClosure -> LRClosure
-mergeLRClosure = Map.unionWith Set.union
-
-completeLRClosure :: Syntax -> FirstSetTable -> LRClosure -> LRClosure
-completeLRClosure syntax table = fixPoint (mergeLRClosure <$> id <*> grow)
-  where grow c = Map.fromListWith Set.union $ do
-          (item, la) <- Map.toList c
-          case lrItemRest item of
-            Left nt : rest' -> do
-              (ruleName, expr) <- syntaxRules syntax nt
-              return (LRItem nt ruleName expr expr, firstSet syntax table la rest')
-            _               -> mzero
-
-initialLRClosure :: Syntax -> FirstSetTable -> LRClosure
-initialLRClosure syntax table = completeLRClosure syntax table seed
-  where seed = Map.singleton (LRItem StartSymbol "(start)" [Left start] [Left start]) (Set.singleton EndOfInput)
-        start = syntaxStart syntax
-        rules = syntaxRules syntax
-
-transitions :: Syntax -> FirstSetTable -> LRClosure -> Map.Map Symbol LRClosure
-transitions syntax table c = fmap (completeLRClosure syntax table) $
-  Map.fromListWith mergeLRClosure $ do
-    (LRItem nt ruleName expr rest, la) <- Map.toList c
-    case rest of
-      []             -> mzero
-      symbol : rest' -> return (symbol, Map.singleton (LRItem nt ruleName expr rest') la)
-
--------------------------------------------------------------------------------
-
-data LR1Automaton = LR1Automaton {
-  lr1AutomatonStart  :: LRClosure,
-  lr1AutomatonEdges  :: Map.Map LRClosure (Map.Map Symbol LRClosure)
-}
-
-lr1Automaton :: Syntax -> LR1Automaton
-lr1Automaton syntax = LR1Automaton start edges
-  where table = firstSetTable syntax
-        start = initialLRClosure syntax table
-        edges = fixPoint grow initialEdges
-        initialEdges = Map.singleton start (transitions syntax table start)
-        grow edges = Map.unionsWith (Map.unionWith mergeLRClosure) $
-          (edges :) $ do
-            es <- Map.elems edges
-            c  <- Map.elems es
-            if Map.member c edges then mzero
-              else return (Map.singleton c (transitions syntax table c))
-            
--------------------------------------------------------------------------------
-
-{-
-data LALRAutomaton = LALRAutomaton {
-  lalrAutomatonStart :: LRClosure,
-  lalrAutomatonEdges :: Map.Map LRClosure (Map.Map Symbol LRClosure)
-}
-
-canMerge :: Map.Map LRClosure (Map.Map Symbol LRClosure) -> LRClosure -> LRClosure -> Bool
-canMerge edges c1 c2 = and [equaling Map.keysSet c1 c2,
-                            equaling referents   c1 c2]
-  where referents c = fmap (fmap hideSelfReferencing) (Map.lookup c edges)
-        hideSelfReferencing c = if c == c1 || c == c2 then Map.empty else c
-
-compactEdges :: LRClosure -> LRClosure -> Map.Map LRClosure (Map.Map Symbol LRClosure) -> Map.Map LRClosure (Map.Map Symbol LRClosure)
-compactEdges c1 c2 edges = edges
-  -- 1. remove c1, c2 from edges
-  |> Map.delete c1 . Map.delete c2
-  -- 2. add c' to edges
-  |> Map.insertWith (Map.unionWith mergeLRClosure) c' rhs'
-  -- 3. replace c1 and c2 by c' in the right hand side of edges
-  |> fmap (fmap (\c -> if c == c1 || c == c2 then c' else c))
-  where c' = mergeLRClosure c1 c2
-        rhs1 = Map.findWithDefault Map.empty c1 edges
-        rhs2 = Map.findWithDefault Map.empty c2 edges
-        rhs' = Map.unionWith mergeLRClosure rhs1 rhs2
-
-lalrAutomaton :: Syntax -> LALRAutomaton
-lalrAutomaton syntax = LALRAutomaton start edges'
-  where LR1Automaton start edges = lr1Automaton syntax
-        edges' = fixPoint compact edges
-        compact es = foldr (uncurry compactEdges) es (mergeablePairs es)
-        mergeablePairs es = [(c1, c2) | (c1, c2) <- allPairs (Map.keys es),
-                              canMerge es c1 c2]
--}
-
-type LRNode = Set.Set LRItem
-
-data LALRAutomaton = LALRAutomaton {
-  lalrAutomatonStart :: LRNode,
-  lalrAutomatonEdges :: Map.Map LRNode (Map.Map Symbol LRNode)
-}
-
-lalrAutomaton :: Syntax -> LALRAutomaton
-lalrAutomaton syntax = LALRAutomaton (Map.keysSet start) edges'
-  where LR1Automaton start edges = lr1Automaton syntax
-        edges' = Map.toList edges
-                 |> map (Map.keysSet *** fmap Map.keysSet)
-                 |> Map.fromListWith (Map.unionWith Set.union)
-
--------------------------------------------------------------------------------
-
-showEdges :: (MonadWriter (Endo String) m) => LALRAutomaton -> m ()
-showEdges (LALRAutomaton start edges) = do
-  forM_ (Map.toList edges) $ \(src, dsts) -> do
-    if src == start
-      then tellsLn (show (Set.toList src) ++ "  <-- start")
-      else tellsShowLn (Set.toList src)
-    forM_ (Map.toList dsts) $ \(symbol, dst) -> do
-      tellsLn (" * " ++ appEndo (execWriter (tellSymbol symbol)) "")
-      tellsLn ("   => " ++ show (Set.toList dst))
-
-printEdges :: LALRAutomaton -> IO ()
-printEdges automaton = putStr (appEndo (execWriter (showEdges automaton)) "")
-
--------------------------------------------------------------------------------
-
--- lalrAutomatonNodes :: LALRAutomaton -> Set.Set LRNode
--- lalrAutomatonNodes automaton = Map.keysSet edges <> Set.fromList $
---   (Map.elems edges >>= Map.elems)
---   where edges = lalrAutomatonEdges automaton
-
-lalrAutomatonNodes :: LALRAutomaton -> Set.Set LRNode
-lalrAutomatonNodes (LALRAutomaton _ edges) = Map.keysSet edges
-
--- edges :: Map.Map n (Map.Map e n)
--- Map.toList edges :: [(n, Map.Map e n)]
--- traverse Map.toList :: (a, Map.Map b c) -> [(a, (b, c))]
--- Map.toList edges >>= traverse Map.toList :: [(n, (e, n))]
-
--- edges :: Map.Map n (t n)
--- Map.toList edges :: [(n, t n)]
--- Map.toList edges >>= sequence
-
-reduces :: LALRAutomaton -> [([LRNode], String, LRNode)]
-reduces automaton = do
-  node            <- Set.toList (lalrAutomatonNodes automaton)
-  LRItem n rn e r <- filter (\(LRItem n _ e r) -> n /= StartSymbol && e == r) (Set.toList node)
-  return (path [] node e, rn, dst node (Left n))
-  where dst start symbol = fromJust (Map.lookup start edges >>= Map.lookup symbol)
-        path acc start []            = start : acc
-        path acc start (symbol:rest) = path (start : acc) (dst start symbol) rest
-        edges = lalrAutomatonEdges automaton
+instance Show LRAutomaton where
+  showsPrec d automaton = showParen (d > 0) $
+    tolds (tellLRAutomaton automaton)
 
 -------------------------------------------------------------------------------

@@ -32,8 +32,8 @@ tellSeparator = tellNewline >> tellsLn (replicate 119 '/') >> tellNewline
 -- generate .hpp
 -------------------------------------------------------------------------------
 
-tellHpp :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
-           m ()
+tellHpp :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+        => m ()
 tellHpp = do
   moduleName <- syntaxName <$> syntax_
   tellNewline

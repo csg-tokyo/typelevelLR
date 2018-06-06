@@ -1,46 +1,58 @@
 
 #ifndef __EXAMPLE3_HPP__
+#define __EXAMPLE3_HPP__
 
 #include <memory>
 #include <string>
 #include <iostream>
+
+namespace example3 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // grammar definition
 
 // syntax example3 (S) {
+//   ruleS0 : S -> "O()" Mod0
+//   ruleS1 : S -> "I()" Mod1
 //   accept : Mod0 -> eps
-//   rule00 : Mod0 -> "O" Mod0
-//   rule01 : Mod0 -> "I" Mod1
-//   rule10 : Mod1 -> "O" Mod2
-//   rule11 : Mod1 -> "I" Mod3
-//   rule20 : Mod2 -> "O" Mod4
-//   rule21 : Mod2 -> "I" Mod5
-//   rule30 : Mod3 -> "O" Mod6
-//   rule31 : Mod3 -> "I" Mod0
-//   rule40 : Mod4 -> "O" Mod1
-//   rule41 : Mod4 -> "I" Mod2
-//   rule50 : Mod5 -> "O" Mod3
-//   rule51 : Mod5 -> "I" Mod4
-//   rule60 : Mod6 -> "O" Mod5
-//   rule61 : Mod6 -> "I" Mod6
-//   ruleS0 : S -> "O" Mod0
-//   ruleS1 : S -> "I" Mod1
+//   rule00 : Mod0 -> "O()" Mod0
+//   rule01 : Mod0 -> "I()" Mod1
+//   rule10 : Mod1 -> "O()" Mod2
+//   rule11 : Mod1 -> "I()" Mod3
+//   rule20 : Mod2 -> "O()" Mod4
+//   rule21 : Mod2 -> "I()" Mod5
+//   rule30 : Mod3 -> "O()" Mod6
+//   rule31 : Mod3 -> "I()" Mod0
+//   rule40 : Mod4 -> "O()" Mod1
+//   rule41 : Mod4 -> "I()" Mod2
+//   rule50 : Mod5 -> "O()" Mod3
+//   rule51 : Mod5 -> "I()" Mod4
+//   rule60 : Mod6 -> "O()" Mod5
+//   rule61 : Mod6 -> "I()" Mod6
 // }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace example3 {
-
 // AST node abstract classes
+
+class S {
+public:
+  class Visitor;
+  class ConstVisitor;
+
+  virtual ~S() noexcept {}
+
+  virtual void accept( Visitor& ) = 0;
+  virtual void accept( ConstVisitor& ) const = 0;
+};
 
 class Mod0 {
 public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~Mod0() noexcept;
+  virtual ~Mod0() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -51,7 +63,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~Mod1() noexcept;
+  virtual ~Mod1() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -62,7 +74,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~Mod2() noexcept;
+  virtual ~Mod2() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -73,7 +85,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~Mod3() noexcept;
+  virtual ~Mod3() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -84,7 +96,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~Mod4() noexcept;
+  virtual ~Mod4() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -95,7 +107,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~Mod5() noexcept;
+  virtual ~Mod5() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -106,18 +118,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~Mod6() noexcept;
-
-  virtual void accept( Visitor& ) = 0;
-  virtual void accept( ConstVisitor& ) const = 0;
-};
-
-class S {
-public:
-  class Visitor;
-  class ConstVisitor;
-
-  virtual ~S() noexcept;
+  virtual ~Mod6() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -127,6 +128,23 @@ public:
 
 // AST node concrete classes
 
+class RuleS0 : public S, public std::tuple< Mod0 > {
+public:
+  explicit RuleS0( Mod0 const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+class RuleS1 : public S, public std::tuple< Mod1 > {
+public:
+  explicit RuleS1( Mod1 const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+
 class Accept : public Mod0, public std::tuple<  > {
 public:
   explicit Accept();
@@ -135,136 +153,119 @@ public:
   void accept( ConstVisitor& visitor ) const;
 };
 
-class Rule00 : public Mod0, public std::tuple< std::shared_ptr< Mod0 > > {
+class Rule00 : public Mod0, public std::tuple< Mod0 > {
 public:
-  explicit Rule00( std::shared_ptr< Mod0 > const& arg1 );
+  explicit Rule00( Mod0 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class Rule01 : public Mod0, public std::tuple< std::shared_ptr< Mod1 > > {
+class Rule01 : public Mod0, public std::tuple< Mod1 > {
 public:
-  explicit Rule01( std::shared_ptr< Mod1 > const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-
-class Rule10 : public Mod1, public std::tuple< std::shared_ptr< Mod2 > > {
-public:
-  explicit Rule10( std::shared_ptr< Mod2 > const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-class Rule11 : public Mod1, public std::tuple< std::shared_ptr< Mod3 > > {
-public:
-  explicit Rule11( std::shared_ptr< Mod3 > const& arg1 );
+  explicit Rule01( Mod1 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
 
-class Rule20 : public Mod2, public std::tuple< std::shared_ptr< Mod4 > > {
+class Rule10 : public Mod1, public std::tuple< Mod2 > {
 public:
-  explicit Rule20( std::shared_ptr< Mod4 > const& arg1 );
+  explicit Rule10( Mod2 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class Rule21 : public Mod2, public std::tuple< std::shared_ptr< Mod5 > > {
+class Rule11 : public Mod1, public std::tuple< Mod3 > {
 public:
-  explicit Rule21( std::shared_ptr< Mod5 > const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-
-class Rule30 : public Mod3, public std::tuple< std::shared_ptr< Mod6 > > {
-public:
-  explicit Rule30( std::shared_ptr< Mod6 > const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-class Rule31 : public Mod3, public std::tuple< std::shared_ptr< Mod0 > > {
-public:
-  explicit Rule31( std::shared_ptr< Mod0 > const& arg1 );
+  explicit Rule11( Mod3 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
 
-class Rule40 : public Mod4, public std::tuple< std::shared_ptr< Mod1 > > {
+class Rule20 : public Mod2, public std::tuple< Mod4 > {
 public:
-  explicit Rule40( std::shared_ptr< Mod1 > const& arg1 );
+  explicit Rule20( Mod4 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class Rule41 : public Mod4, public std::tuple< std::shared_ptr< Mod2 > > {
+class Rule21 : public Mod2, public std::tuple< Mod5 > {
 public:
-  explicit Rule41( std::shared_ptr< Mod2 > const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-
-class Rule50 : public Mod5, public std::tuple< std::shared_ptr< Mod3 > > {
-public:
-  explicit Rule50( std::shared_ptr< Mod3 > const& arg1 );
-
-  void accept( Visitor& visitor );
-  void accept( ConstVisitor& visitor ) const;
-};
-
-class Rule51 : public Mod5, public std::tuple< std::shared_ptr< Mod4 > > {
-public:
-  explicit Rule51( std::shared_ptr< Mod4 > const& arg1 );
+  explicit Rule21( Mod5 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
 
-class Rule60 : public Mod6, public std::tuple< std::shared_ptr< Mod5 > > {
+class Rule30 : public Mod3, public std::tuple< Mod6 > {
 public:
-  explicit Rule60( std::shared_ptr< Mod5 > const& arg1 );
+  explicit Rule30( Mod6 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class Rule61 : public Mod6, public std::tuple< std::shared_ptr< Mod6 > > {
+class Rule31 : public Mod3, public std::tuple< Mod0 > {
 public:
-  explicit Rule61( std::shared_ptr< Mod6 > const& arg1 );
+  explicit Rule31( Mod0 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
 
-class RuleS0 : public S, public std::tuple< std::shared_ptr< Mod0 > > {
+class Rule40 : public Mod4, public std::tuple< Mod1 > {
 public:
-  explicit RuleS0( std::shared_ptr< Mod0 > const& arg1 );
+  explicit Rule40( Mod1 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class RuleS1 : public S, public std::tuple< std::shared_ptr< Mod1 > > {
+class Rule41 : public Mod4, public std::tuple< Mod2 > {
 public:
-  explicit RuleS1( std::shared_ptr< Mod1 > const& arg1 );
+  explicit Rule41( Mod2 const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+
+class Rule50 : public Mod5, public std::tuple< Mod3 > {
+public:
+  explicit Rule50( Mod3 const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+class Rule51 : public Mod5, public std::tuple< Mod4 > {
+public:
+  explicit Rule51( Mod4 const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+
+class Rule60 : public Mod6, public std::tuple< Mod5 > {
+public:
+  explicit Rule60( Mod5 const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+class Rule61 : public Mod6, public std::tuple< Mod6 > {
+public:
+  explicit Rule61( Mod6 const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
@@ -273,6 +274,18 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // visitors
+
+class S::Visitor{
+public:
+  virtual void visitRuleS0( RuleS0& host ) = 0;
+  virtual void visitRuleS1( RuleS1& host ) = 0;
+};
+
+class S::ConstVisitor{
+public:
+  virtual void visitRuleS0( RuleS0 const& host ) = 0;
+  virtual void visitRuleS1( RuleS1 const& host ) = 0;
+};
 
 class Mod0::Visitor{
 public:
@@ -360,20 +373,9 @@ public:
   virtual void visitRule61( Rule61 const& host ) = 0;
 };
 
-class S::Visitor{
-public:
-  virtual void visitRuleS0( RuleS0& host ) = 0;
-  virtual void visitRuleS1( RuleS1& host ) = 0;
-};
-
-class S::ConstVisitor{
-public:
-  virtual void visitRuleS0( RuleS0 const& host ) = 0;
-  virtual void visitRuleS1( RuleS1 const& host ) = 0;
-};
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::ostream& operator <<( std::ostream& out, S const& self );
 std::ostream& operator <<( std::ostream& out, Mod0 const& self );
 std::ostream& operator <<( std::ostream& out, Mod1 const& self );
 std::ostream& operator <<( std::ostream& out, Mod2 const& self );
@@ -381,7 +383,8 @@ std::ostream& operator <<( std::ostream& out, Mod3 const& self );
 std::ostream& operator <<( std::ostream& out, Mod4 const& self );
 std::ostream& operator <<( std::ostream& out, Mod5 const& self );
 std::ostream& operator <<( std::ostream& out, Mod6 const& self );
-std::ostream& operator <<( std::ostream& out, S const& self );
+std::ostream& operator <<( std::ostream& out, RuleS0 const& self );
+std::ostream& operator <<( std::ostream& out, RuleS1 const& self );
 std::ostream& operator <<( std::ostream& out, Accept const& self );
 std::ostream& operator <<( std::ostream& out, Rule00 const& self );
 std::ostream& operator <<( std::ostream& out, Rule01 const& self );
@@ -397,198 +400,195 @@ std::ostream& operator <<( std::ostream& out, Rule50 const& self );
 std::ostream& operator <<( std::ostream& out, Rule51 const& self );
 std::ostream& operator <<( std::ostream& out, Rule60 const& self );
 std::ostream& operator <<( std::ostream& out, Rule61 const& self );
-std::ostream& operator <<( std::ostream& out, RuleS0 const& self );
-std::ostream& operator <<( std::ostream& out, RuleS1 const& self );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // automaton nodes
 
-class S1 {
+class Node1 {
 public:
-  std::shared_ptr< S > content;
-  explicit S1( std::shared_ptr< S > const& content_ );
 };
 
-class S2 {
+class Node2 {
 public:
-  explicit S2();
+  S content;
+  explicit Node2( S const& content_ );
 };
 
-class S3 {
+class Node3 {
 public:
-  explicit S3();
+  explicit Node3();
 };
 
-class S4 {
+class Node4 {
 public:
-  explicit S4();
+  explicit Node4();
 };
 
-class S5 {
+class Node5 {
 public:
-  explicit S5();
+  explicit Node5();
 };
 
-class S6 {
+class Node6 {
 public:
-  std::shared_ptr< Mod0 > content;
-  explicit S6( std::shared_ptr< Mod0 > const& content_ );
+  Mod0 content;
+  explicit Node6( Mod0 const& content_ );
 };
 
-class S7 {
+class Node7 {
 public:
-  std::shared_ptr< Mod1 > content;
-  explicit S7( std::shared_ptr< Mod1 > const& content_ );
+  Mod1 content;
+  explicit Node7( Mod1 const& content_ );
 };
 
-class S8 {
+class Node8 {
 public:
-  explicit S8();
+  explicit Node8();
 };
 
-class S9 {
+class Node9 {
 public:
-  std::shared_ptr< Mod2 > content;
-  explicit S9( std::shared_ptr< Mod2 > const& content_ );
+  Mod2 content;
+  explicit Node9( Mod2 const& content_ );
 };
 
-class S10 {
+class Node10 {
 public:
-  explicit S10();
+  explicit Node10();
 };
 
-class S11 {
+class Node11 {
 public:
-  explicit S11();
+  explicit Node11();
 };
 
-class S12 {
+class Node12 {
 public:
-  explicit S12();
+  explicit Node12();
 };
 
-class S13 {
+class Node13 {
 public:
-  std::shared_ptr< Mod3 > content;
-  explicit S13( std::shared_ptr< Mod3 > const& content_ );
+  Mod3 content;
+  explicit Node13( Mod3 const& content_ );
 };
 
-class S14 {
+class Node14 {
 public:
-  explicit S14();
+  explicit Node14();
 };
 
-class S15 {
+class Node15 {
 public:
-  std::shared_ptr< Mod4 > content;
-  explicit S15( std::shared_ptr< Mod4 > const& content_ );
+  Mod4 content;
+  explicit Node15( Mod4 const& content_ );
 };
 
-class S16 {
+class Node16 {
 public:
-  explicit S16();
+  explicit Node16();
 };
 
-class S17 {
+class Node17 {
 public:
-  explicit S17();
+  explicit Node17();
 };
 
-class S18 {
+class Node18 {
 public:
-  std::shared_ptr< Mod5 > content;
-  explicit S18( std::shared_ptr< Mod5 > const& content_ );
+  Mod5 content;
+  explicit Node18( Mod5 const& content_ );
 };
 
-class S19 {
+class Node19 {
 public:
-  explicit S19();
+  explicit Node19();
 };
 
-class S20 {
+class Node20 {
 public:
-  std::shared_ptr< Mod6 > content;
-  explicit S20( std::shared_ptr< Mod6 > const& content_ );
+  Mod6 content;
+  explicit Node20( Mod6 const& content_ );
 };
 
-class S21 {
+class Node21 {
 public:
-  explicit S21();
+  explicit Node21();
 };
 
-class S22 {
+class Node22 {
 public:
-  explicit S22();
+  explicit Node22();
 };
 
-class S23 {
+class Node23 {
 public:
-  std::shared_ptr< Mod0 > content;
-  explicit S23( std::shared_ptr< Mod0 > const& content_ );
+  Mod0 content;
+  explicit Node23( Mod0 const& content_ );
 };
 
-class S24 {
+class Node24 {
 public:
-  std::shared_ptr< Mod1 > content;
-  explicit S24( std::shared_ptr< Mod1 > const& content_ );
+  Mod1 content;
+  explicit Node24( Mod1 const& content_ );
 };
 
-class S25 {
+class Node25 {
 public:
-  explicit S25();
+  explicit Node25();
 };
 
-class S26 {
+class Node26 {
 public:
-  std::shared_ptr< Mod2 > content;
-  explicit S26( std::shared_ptr< Mod2 > const& content_ );
+  Mod2 content;
+  explicit Node26( Mod2 const& content_ );
 };
 
-class S27 {
+class Node27 {
 public:
-  std::shared_ptr< Mod3 > content;
-  explicit S27( std::shared_ptr< Mod3 > const& content_ );
+  Mod3 content;
+  explicit Node27( Mod3 const& content_ );
 };
 
-class S28 {
+class Node28 {
 public:
-  explicit S28();
+  explicit Node28();
 };
 
-class S29 {
+class Node29 {
 public:
-  std::shared_ptr< Mod4 > content;
-  explicit S29( std::shared_ptr< Mod4 > const& content_ );
+  Mod4 content;
+  explicit Node29( Mod4 const& content_ );
 };
 
-class S30 {
+class Node30 {
 public:
-  std::shared_ptr< Mod5 > content;
-  explicit S30( std::shared_ptr< Mod5 > const& content_ );
+  Mod5 content;
+  explicit Node30( Mod5 const& content_ );
 };
 
-class S31 {
+class Node31 {
 public:
-  explicit S31();
+  explicit Node31();
 };
 
-class S32 {
+class Node32 {
 public:
-  std::shared_ptr< Mod6 > content;
-  explicit S32( std::shared_ptr< Mod6 > const& content_ );
+  Mod6 content;
+  explicit Node32( Mod6 const& content_ );
 };
 
-class S33 {
+class Node33 {
 public:
-  std::shared_ptr< Mod0 > content;
-  explicit S33( std::shared_ptr< Mod0 > const& content_ );
+  Mod0 content;
+  explicit Node33( Mod0 const& content_ );
 };
 
-class S34 {
+class Node34 {
 public:
-  std::shared_ptr< Mod1 > content;
-  explicit S34( std::shared_ptr< Mod1 > const& content_ );
+  Mod1 content;
+  explicit Node34( Mod1 const& content_ );
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -604,7 +604,7 @@ class State<> {};
 template< typename Head, typename... Tail >
 class State< Head, Tail... > {
 public:
-  std::shared_ptr< State< Head, Tail... > > this_;
+  std::weak_ptr< State< Head, Tail... > > this_;
   Head head;
   std::shared_ptr< State< Tail... > > tail;
 
@@ -612,12 +612,12 @@ private:
   State( Head const& head_, std::shared_ptr< State< Tail... > > const& tail_ );
 
 public:
-static std::shared_ptr< State< Head, Tail... > > make( Head const& head, std::shared_ptr< State< Tail... > > const& tail );
+  static std::shared_ptr< State< Head, Tail... > > make( Head const& head, std::shared_ptr< State< Tail... > > const& tail );
 
 public:
   auto end();
-  auto I();
   auto O();
+  auto I();
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -628,10 +628,10 @@ template< typename... Stack >
 auto end_transition( std::shared_ptr< State< Stack... > > const& src );
 
 template< typename... Stack >
-auto I_transition( std::shared_ptr< State< Stack... > > const& src );
+auto O_transition( std::shared_ptr< State< Stack... > > const& src );
 
 template< typename... Stack >
-auto O_transition( std::shared_ptr< State< Stack... > > const& src );
+auto I_transition( std::shared_ptr< State< Stack... > > const& src );
 
 
 template< typename... Stack >
@@ -639,7 +639,7 @@ auto reduce( std::shared_ptr< State< Stack... > > const& src );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr< State< S2 > > begin();
+std::shared_ptr< State< Node1 > > begin();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

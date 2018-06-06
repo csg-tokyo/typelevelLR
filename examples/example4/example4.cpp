@@ -5,19 +5,9 @@ namespace example4 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Name::~Name() noexcept {}
 Start::~Start() noexcept {}
-
-
-NameString::NameString( std::string const& arg1 )
-  :std::tuple< std::string >( arg1 ) {}
-
-void NameString::accept( Visitor& visitor ) {
-  visitor.visitNameString( *this );
-}
-void NameString::accept( ConstVisitor& visitor ) const {
-  visitor.visitNameString( *this );
-}
+Name::~Name() noexcept {}
+Str::~Str() noexcept {}
 
 
 SimpleHello::SimpleHello(  )
@@ -31,8 +21,8 @@ void SimpleHello::accept( ConstVisitor& visitor ) const {
 }
 
 
-HelloWithName::HelloWithName( std::shared_ptr< Name > const& arg1 )
-  :std::tuple< std::shared_ptr< Name > >( arg1 ) {}
+HelloWithName::HelloWithName( Name const& arg1 )
+  :std::tuple< Name >( arg1 ) {}
 
 void HelloWithName::accept( Visitor& visitor ) {
   visitor.visitHelloWithName( *this );
@@ -41,20 +31,20 @@ void HelloWithName::accept( ConstVisitor& visitor ) const {
   visitor.visitHelloWithName( *this );
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator <<( std::ostream &out, Name const& self ) {
-  class Visitor : public Name::ConstVisitor {
-  public:
-    std::ostream* out_;
-    Visitor( std::ostream& out ):out_( &out ){}
-    void visitNameString( NameString const& host ) {
-      *out_ << host;
-    }
-  } visitor( out );
-  self.accept( visitor );
-  return out;
+NameString::NameString( Str const& arg1 )
+  :std::tuple< Str >( arg1 ) {}
+
+void NameString::accept( Visitor& visitor ) {
+  visitor.visitNameString( *this );
 }
+void NameString::accept( ConstVisitor& visitor ) const {
+  visitor.visitNameString( *this );
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator <<( std::ostream &out, Start const& self ) {
   class Visitor : public Start::ConstVisitor {
@@ -72,11 +62,29 @@ std::ostream& operator <<( std::ostream &out, Start const& self ) {
   return out;
 }
 
-
-std::ostream& operator <<( std::ostream& out, NameString const& self ) {
-  out << "NameString("<<  std::get< 0 >( self ) << ")";
+std::ostream& operator <<( std::ostream &out, Name const& self ) {
+  class Visitor : public Name::ConstVisitor {
+  public:
+    std::ostream* out_;
+    Visitor( std::ostream& out ):out_( &out ){}
+    void visitNameString( NameString const& host ) {
+      *out_ << host;
+    }
+  } visitor( out );
+  self.accept( visitor );
   return out;
 }
+
+std::ostream& operator <<( std::ostream &out, Str const& self ) {
+  class Visitor : public Str::ConstVisitor {
+  public:
+    std::ostream* out_;
+    Visitor( std::ostream& out ):out_( &out ){}
+  } visitor( out );
+  self.accept( visitor );
+  return out;
+}
+
 
 std::ostream& operator <<( std::ostream& out, SimpleHello const& self ) {
   out << "SimpleHello(" << ")";
@@ -84,27 +92,33 @@ std::ostream& operator <<( std::ostream& out, SimpleHello const& self ) {
 }
 
 std::ostream& operator <<( std::ostream& out, HelloWithName const& self ) {
-  out << "HelloWithName("<< *std::get< 0 >( self ) << ")";
+  out << "HelloWithName("<<  std::get< 0 >( self ) << ")";
   return out;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+std::ostream& operator <<( std::ostream& out, NameString const& self ) {
+  out << "NameString("<<  std::get< 0 >( self ) << ")";
+  return out;
+}
 
-S1::S1( std::shared_ptr< Start > const& content_ ) :content( content_ ) {}
-
-S2::S2() {}
-
-S3::S3( std::string const& content_ ) :content( content_ ) {}
-
-S4::S4() {}
-
-S5::S5( std::shared_ptr< Name > const& content_ ) :content( content_ ) {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr< State< S2 > > begin() {
+Node1::Node1() {}
+
+Node2::Node2( Start const& content_ ) :content( content_ ) {}
+
+Node3::Node3( Name const& content_ ) :content( content_ ) {}
+
+Node4::Node4() {}
+
+Node5::Node5( str const& content_ ) :content( content_ ) {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr< State< Node1 > > begin() {
   std::shared_ptr< State<> > bottom( new State<>() );
-  return State< S2 >::make( S2(), bottom );
+  return State< Node1 >::make( Node1(), bottom );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

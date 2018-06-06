@@ -10,9 +10,9 @@ module Example4 where
 
 -- grammar definition
 
+-- simpleHello : Start -> "hello()"
+-- helloWithName : Start -> "hello()" Name
 -- nameString : Name -> str
--- simpleHello : Start -> "hello"
--- helloWithName : Start -> "hello" Name
 
 -------------------------------------------------------------------------------
 
@@ -25,13 +25,16 @@ program a = \k -> k a
 
 -- AST nodes
 
-data Name
-  = NameString String
-  deriving (Show)
-
 data Start
   = SimpleHello
   | HelloWithName Name
+  deriving (Show)
+
+data Name
+  = NameString Str
+  deriving (Show)
+
+data Str
   deriving (Show)
 
 -------------------------------------------------------------------------------
@@ -41,32 +44,26 @@ data Start
 class HelloTransition s t | s -> t where
   hello :: s -> Program r t
 
-class StrTransition s t | s -> t where
-  str :: s -> String -> Program r t
-
+-------------------------------------------------------------------------------
 
 -- automaton states
 
-data S1 prev = S1 prev Start
+data Node1 prev = Node1 prev
 
-data S2 prev = S2 prev
+data Node2 prev = Node2 prev Start
 
-data S3 prev = S3 prev String
+data Node3 prev = Node3 prev Name
 
-data S4 prev = S4 prev
+data Node4 prev = Node4 prev
 
-data S5 prev = S5 prev Name
+data Node5 prev = Node5 prev Str
 
 -------------------------------------------------------------------------------
 
 -- shift transitions
 
-instance {-# OVERLAPS #-} HelloTransition (S2 prev) (S4 (S2 prev)) where
-  hello prev = program (S4 prev)
-
-
-instance {-# OVERLAPS #-} StrTransition (S4 prev) (S3 (S4 prev)) where
-  str prev s = program (S3 prev s)
+instance {-# OVERLAPS #-} HelloTransition (Node1 prev) (Node4 (Node1 prev)) where
+  hello prev = program (Node4 prev)
 
 -------------------------------------------------------------------------------
 
@@ -76,40 +73,43 @@ class Reduce s t | s -> t where
   reduce :: s -> t
 
 
-instance Reduce (S5 (S4 (S2 prev))) (S1 (S2 prev)) where
-  reduce (S5 (S4 prev) p1) = S1 prev (HelloWithName p1)
+-- simpleHello : Start -> "hello()"
 
-instance Reduce (S4 (S2 prev)) (S1 (S2 prev)) where
-  reduce (S4 prev) = S1 prev (SimpleHello)
+instance Reduce (Node4 (Node1 prev)) (Node2 (Node1 prev)) where
+  reduce (Node4 prev) = (Node2 prev (SimpleHello))
 
-instance Reduce (S3 (S4 prev)) (S5 (S4 prev)) where
-  reduce (S3 prev p1) = S5 prev (NameString p1)
+
+-- helloWithName : Start -> "hello()" Name
+
+instance Reduce (Node3 (Node4 (Node1 prev))) (Node2 (Node1 prev)) where
+  reduce (Node3 (Node4 prev) x1) = (Node2 prev (HelloWithName x1))
+
+
+-- nameString : Name -> str
+
+instance Reduce (Node5 (Node4 prev)) (Node3 (Node4 prev)) where
+  reduce (Node5 prev x1) = (Node3 prev (NameString x1))
 
 
 -- Reduce -> Transition
 
-instance {-# OVERLAPS #-} (Reduce r s, HelloTransition s t) =>
-    HelloTransition r t where
+instance {-# OVERLAPS #-} (Reduce r s, HelloTransition s t) => HelloTransition r t where
   hello r = hello (reduce r)
-
-instance {-# OVERLAPS #-} (Reduce r s, StrTransition s t) =>
-    StrTransition r t where
-  str r s = str (reduce r) s
 
 -------------------------------------------------------------------------------
 
 -- initial state
 
-begin :: Program r (S2 ())
-begin = program (S2 ())
+begin :: Program r (Node1 ())
+begin = program (Node1 ())
 
 -------------------------------------------------------------------------------
 
 class End s r | s -> r where
   end :: s -> r
 
-instance {-# OVERLAPS #-} End (S1 prev) Start where
-  end (S1 _ r) = r
+instance {-# OVERLAPS #-} End (Node2 prev) Start where
+  end (Node2 _ r) = r
 
 instance {-# OVERLAPS #-} (Reduce r s, End s t) => End r t where
   end r = end (reduce r)

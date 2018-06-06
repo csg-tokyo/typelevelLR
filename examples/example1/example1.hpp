@@ -1,24 +1,25 @@
 
 #ifndef __EXAMPLE1_HPP__
+#define __EXAMPLE1_HPP__
 
 #include <memory>
 #include <string>
 #include <iostream>
+
+namespace example1 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // grammar definition
 
 // syntax example1 (A) {
-//   genA : A -> "a" A
+//   genA : A -> "a()" A
 //   BToA : A -> B
-//   genAB : B -> "a" B "b"
+//   genAB : B -> "a()" B "b()"
 //   fin : B -> eps
 // }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace example1 {
 
 // AST node abstract classes
 
@@ -27,7 +28,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~A() noexcept;
+  virtual ~A() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -38,7 +39,7 @@ public:
   class Visitor;
   class ConstVisitor;
 
-  virtual ~B() noexcept;
+  virtual ~B() noexcept {}
 
   virtual void accept( Visitor& ) = 0;
   virtual void accept( ConstVisitor& ) const = 0;
@@ -48,26 +49,26 @@ public:
 
 // AST node concrete classes
 
-class GenA : public A, public std::tuple< std::shared_ptr< A > > {
+class GenA : public A, public std::tuple< A > {
 public:
-  explicit GenA( std::shared_ptr< A > const& arg1 );
+  explicit GenA( A const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
-class BToA : public A, public std::tuple< std::shared_ptr< B > > {
+class BToA : public A, public std::tuple< B > {
 public:
-  explicit BToA( std::shared_ptr< B > const& arg1 );
+  explicit BToA( B const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
 };
 
 
-class GenAB : public B, public std::tuple< std::shared_ptr< B > > {
+class GenAB : public B, public std::tuple< B > {
 public:
-  explicit GenAB( std::shared_ptr< B > const& arg1 );
+  explicit GenAB( B const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
@@ -122,43 +123,42 @@ std::ostream& operator <<( std::ostream& out, Fin const& self );
 
 // automaton nodes
 
-class S1 {
+class Node1 {
 public:
-  std::shared_ptr< A > content;
-  explicit S1( std::shared_ptr< A > const& content_ );
 };
 
-class S2 {
+class Node2 {
 public:
-  explicit S2();
+  A content;
+  explicit Node2( A const& content_ );
 };
 
-class S3 {
+class Node3 {
 public:
-  std::shared_ptr< B > content;
-  explicit S3( std::shared_ptr< B > const& content_ );
+  B content;
+  explicit Node3( B const& content_ );
 };
 
-class S4 {
+class Node4 {
 public:
-  std::shared_ptr< B > content;
-  explicit S4( std::shared_ptr< B > const& content_ );
+  B content;
+  explicit Node4( B const& content_ );
 };
 
-class S5 {
+class Node5 {
 public:
-  explicit S5();
+  explicit Node5();
 };
 
-class S6 {
+class Node6 {
 public:
-  std::shared_ptr< A > content;
-  explicit S6( std::shared_ptr< A > const& content_ );
+  A content;
+  explicit Node6( A const& content_ );
 };
 
-class S7 {
+class Node7 {
 public:
-  explicit S7();
+  explicit Node7();
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -174,7 +174,7 @@ class State<> {};
 template< typename Head, typename... Tail >
 class State< Head, Tail... > {
 public:
-  std::shared_ptr< State< Head, Tail... > > this_;
+  std::weak_ptr< State< Head, Tail... > > this_;
   Head head;
   std::shared_ptr< State< Tail... > > tail;
 
@@ -182,7 +182,7 @@ private:
   State( Head const& head_, std::shared_ptr< State< Tail... > > const& tail_ );
 
 public:
-static std::shared_ptr< State< Head, Tail... > > make( Head const& head, std::shared_ptr< State< Tail... > > const& tail );
+  static std::shared_ptr< State< Head, Tail... > > make( Head const& head, std::shared_ptr< State< Tail... > > const& tail );
 
 public:
   auto end();
@@ -209,7 +209,7 @@ auto reduce( std::shared_ptr< State< Stack... > > const& src );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr< State< S2 > > begin();
+std::shared_ptr< State< Node1 > > begin();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

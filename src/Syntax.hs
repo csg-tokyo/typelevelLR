@@ -1,4 +1,5 @@
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module Syntax (module Syntax) where
@@ -8,114 +9,153 @@ import Utility
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Data.Monoid           ((<>), Endo(appEndo))
+import Control.Monad         (forM_, mzero)
 import Control.Arrow         (second)
 import Control.Monad.Writer  (MonadWriter(), execWriter)
-import Data.Either           (lefts, rights)
-import Data.List             (tails)
+import Data.Monoid           ((<>), Endo(appEndo))
+import Data.List             (nub, tails)
 
 -------------------------------------------------------------------------------
 
 data Syntax = Syntax {
-  syntaxName      :: String,
-  syntaxStart     :: NonTerminal,
-  syntaxRuleTable :: Map.Map NonTerminal Rule
+  syntaxName       :: String,
+  syntaxStart      :: NonTerminal,
+  syntaxRulesTable :: Map.Map NonTerminal [Rule]
 }
 
-syntaxRules :: Syntax -> NonTerminal -> Rule
-syntaxRules syntax nt = Map.findWithDefault [] nt (syntaxRuleTable syntax)
+data Rule = Rule { ruleName :: String,
+                   ruleLhs  :: NonTerminal,
+                   ruleRhs  :: [Symbol] }
+  deriving (Eq, Ord)
 
-type Rule = [(String, [Symbol])]
-
-type Symbol = Either NonTerminal Terminal
+data Symbol = NonTerminalSymbol NonTerminal
+            | TerminalSymbol    Terminal
+  deriving (Eq, Ord)
 
 data NonTerminal = StartSymbol
-                 | NonTerminal String
-  deriving (Show, Eq, Ord)
+                 | UserNonTerminal String
+  deriving (Eq, Ord)
 
-nonTerminalName :: NonTerminal -> String
-nonTerminalName StartSymbol = "(start)"
-nonTerminalName (NonTerminal name) = name
-
-data Terminal = Keyword String
-              | StringLiteral
-              | IntLiteral
+data Terminal = UserTerminal String [String]
               | EndOfInput
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
 
 -------------------------------------------------------------------------------
 
-syntax :: String -> NonTerminal -> [(NonTerminal, Rule)] -> Syntax
+syntax :: String -> NonTerminal -> [Rule] -> Syntax
 syntax name start rules = Syntax name start ruleTable
-  where ruleTable = Map.fromListWith (flip (++)) rules
+  where ruleTable = Map.fromListWith (flip (++)) [(ruleLhs rule, [rule]) | rule <- rules]
 
-nonTerminals :: Syntax -> Set.Set NonTerminal
-nonTerminals (Syntax _ start table) = Set.unions $
-  [Set.singleton start,
-   Map.keysSet table,
-   Set.fromList (Map.elems table >>= map snd >>= lefts)]
+syntaxRules :: Syntax -> NonTerminal -> [Rule]
+syntaxRules syntax nt = Map.findWithDefault [] nt (syntaxRulesTable syntax)
 
-terminals :: Syntax -> Set.Set Terminal
-terminals (Syntax _ _ table) = Set.fromList (Map.elems table >>= map snd >>= rights)
+syntaxNonTerminals :: Syntax -> [NonTerminal]
+syntaxNonTerminals syntax = nub ([start] ++ lhss ++ rhss)
+  where start = syntaxStart syntax
+        lhss  = Map.keys (syntaxRulesTable syntax)
+        rhss  = Map.elems (syntaxRulesTable syntax) >>= id >>= ruleRhs >>= \case
+          NonTerminalSymbol nt -> return nt
+          _                    -> mzero
+
+syntaxTerminals :: Syntax -> [Terminal]
+syntaxTerminals syntax = nub $ Map.elems (syntaxRulesTable syntax) >>= id >>= ruleRhs >>= \case
+  TerminalSymbol t -> return t
+  _                -> mzero
 
 -------------------------------------------------------------------------------
 
-tellSyntax :: (MonadWriter (Endo String) m) => Syntax -> m ()
-tellSyntax syntax@(Syntax name start rules) = do
-  tells "syntax " >> tells name
-  tells " (" >> tells (nonTerminalName start) >> tells ") { "
-  forMWithSep_ (tells "; ") (Set.toList (nonTerminals syntax)) $ \nt -> do
-    tellDefinition syntax nt
+tellSyntaxSingleLine :: (MonadWriter (Endo String) m) => Syntax -> m ()
+tellSyntaxSingleLine syntax = do
+  tells "syntax " >> tells (syntaxName syntax)
+  tells " (" >> tellNonTerminal (syntaxStart syntax) >> tells ") { "
+  forMWithSep_ (tells "; ") (syntaxNonTerminals syntax) $ \nt -> do
+    mapMWithSep_ (tells "; ") tellRule (syntaxRules syntax nt)
   tells " }"
 
-tellDefinition :: (MonadWriter (Endo String) m) => Syntax -> NonTerminal -> m ()
-tellDefinition syntax nt = do
-  forMWithSep_ (tells "; ") (syntaxRules syntax nt) $ \(name, expr) -> do
-    tells (name ++ " : " ++ nonTerminalName nt ++ " -> ")
-    tellExpr expr
+tellSyntaxMultiLine :: (MonadWriter (Endo String) m) => Syntax -> m ()
+tellSyntaxMultiLine syntax = do
+  tells "syntax " >> tells (syntaxName syntax)
+  tells " (" >> tellNonTerminal (syntaxStart syntax) >> tellsLn ") {"
+  forM_ (syntaxNonTerminals syntax) $ \nt -> do
+    forM_ (syntaxRules syntax nt) $ \rule -> do
+      tells "  " >> tellRule rule >> tellNewline
+  tells "}"
 
-tellExpr :: (MonadWriter (Endo String) m) => [Symbol] -> m ()
-tellExpr []      = tells "eps"
-tellExpr symbols = do
-  forMWithSep_ (tells " ") symbols $ \symbol -> do
-    tellSymbol symbol
+tellRule :: (MonadWriter (Endo String) m) => Rule -> m ()
+tellRule rule = do
+  tells (ruleName rule) >> tells " : "
+  tellNonTerminal (ruleLhs rule) >> tells " -> "
+  case ruleRhs rule of
+    []  -> tells "eps"
+    rhs -> mapMWithSep_ (tells " ") tellSymbol rhs
 
 tellSymbol :: (MonadWriter (Endo String) m) => Symbol -> m ()
-tellSymbol = either tellNonTerminal tellTerminal
+tellSymbol (NonTerminalSymbol nt) = tellNonTerminal nt
+tellSymbol (TerminalSymbol    t)  = tellTerminal    t
+
+nonTerminalName :: NonTerminal -> String
+nonTerminalName StartSymbol            = "(start)"
+nonTerminalName (UserNonTerminal name) = name
 
 tellNonTerminal :: (MonadWriter (Endo String) m) => NonTerminal -> m ()
 tellNonTerminal nt = tells (nonTerminalName nt)
 
 tellTerminal :: (MonadWriter (Endo String) m) => Terminal -> m ()
-tellTerminal (Keyword keyword) = tells "\"" >> tells keyword >> tells "\""
-tellTerminal StringLiteral     = tells "str"
-tellTerminal IntLiteral        = tells "int"
-tellTerminal EndOfInput        = tells "<EndOfInput>"
+tellTerminal (UserTerminal name params) = do
+  tells "\"" >> tells name >> tells "("
+  case params of [] -> return ()
+                 _  -> mapMWithSep_ (tells ", ") tells params
+  tells ")\""
+tellTerminal EndOfInput        = tells "$"
+
+-------------------------------------------------------------------------------
 
 instance Show Syntax where
-  showsPrec d syntax = showParen (d > 0) $
-    appEndo (execWriter (tellSyntax syntax))
+  showsPrec 0 syntax = tolds (tellSyntaxMultiLine syntax)
+  showsPrec d syntax = showParen (d > 10) (tolds (tellSyntaxSingleLine syntax))
+
+instance Show Rule where
+  showsPrec d rule = showString "Rule[" . tolds (tellRule rule) . showString "]"
+
+instance Show Symbol where
+  showsPrec d symbol = showParen (d > 10) $
+                       showString "Symbol " . tolds (tellSymbol symbol)
+
+instance Show NonTerminal where
+  showsPrec d nt = showParen (d > 10) $
+    showString "NonTerminal " . tolds (tellNonTerminal nt)
+
+instance Show Terminal where
+  showsPrec d t = showParen (d > 10) $
+    showString "Terminal " . tolds (tellTerminal t)
 
 -------------------------------------------------------------------------------
 
 type FirstSetTable = Map.Map NonTerminal (Set.Set Terminal)
 
-nullable :: Syntax -> NonTerminal -> Bool
-nullable syntax nt = any (all (either (nullable syntax) (const False)) . snd) rules
-  where rules = syntaxRules syntax nt
-
-firstSetTable :: Syntax -> FirstSetTable
-firstSetTable syntax = fixPoint grow initialTable
-  where initialTable = Map.fromSet (const Set.empty) (nonTerminals syntax)
-        grow table = flip Map.mapWithKey table $ \nt set ->
-          set <> foldMap (firstSet syntax table Set.empty . snd) (syntaxRules syntax nt)
+firstSetTableLookup :: FirstSetTable -> NonTerminal -> Set.Set Terminal
+firstSetTableLookup table nt = Map.findWithDefault Set.empty nt table
 
 firstSet :: Syntax -> FirstSetTable -> Set.Set Terminal -> [Symbol] -> Set.Set Terminal
 firstSet _      _     la []               = la
-firstSet syntax table la (Left nt : rest)
-  | nullable syntax nt = fs <> firstSet syntax table la rest
-  | otherwise          = fs
+firstSet syntax table la (NonTerminalSymbol nt : rest)
+  | nonTerminalNullable syntax nt = fs <> firstSet syntax table la rest
+  | otherwise                     = fs
   where fs = Map.findWithDefault Set.empty nt table
-firstSet _      _     la (Right t : rest) = Set.singleton t
+firstSet _      _     la (TerminalSymbol t : rest) = Set.singleton t
+
+nonTerminalNullable :: Syntax -> NonTerminal -> Bool
+nonTerminalNullable syntax nt = any (all symbolNullable . ruleRhs) rules
+  where rules = syntaxRules syntax nt
+        symbolNullable (NonTerminalSymbol nt') = nonTerminalNullable syntax nt'
+        symbolNullable _                       = False
+
+buildFirstSetTable :: Syntax -> FirstSetTable
+buildFirstSetTable syntax = fixPoint grow initialTable
+  where initialTable = Map.fromList [(nt, Set.empty) |
+                                     nt <- syntaxNonTerminals syntax]
+        grow table = Map.mapWithKey (growOne table) table
+        growOne table nt la = Set.union la $
+          foldMap (firstSet syntax table Set.empty . ruleRhs) (syntaxRules syntax nt)
 
 -------------------------------------------------------------------------------
