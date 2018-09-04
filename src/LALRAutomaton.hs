@@ -41,6 +41,10 @@ lrAutomatonNodes automaton = nub ([start] ++ lhsNodes ++ rhsNodes)
         lhsNodes = Map.keys (lrAutomatonEdgesTable automaton)
         rhsNodes = (Map.elems <=< Map.elems) (lrAutomatonEdgesTable automaton)
 
+lrAutomatonNext :: LRAutomaton -> LRNode -> Symbol -> Maybe LRNode
+lrAutomatonNext automaton src sym = do
+  return (lrAutomatonEdgesTable automaton) >>= Map.lookup src >>= Map.lookup sym
+
 -------------------------------------------------------------------------------
 
 lrItem :: Rule -> LRItem
@@ -125,9 +129,17 @@ reduces :: LRAutomaton -> Rule -> [([LRNode], [LRNode])]
 reduces automaton rule =
   [(path node (ruleRhs rule), path node [NonTerminalSymbol (ruleLhs rule)]) |
    node <- lrAutomatonNodes automaton,
-   any (== lrItem rule) [item | (item, _) <- lrNodeItems node]]
+   any (\(item, _) -> item == lrItem rule) (lrNodeItems node)]
   where path = scanl $ \node symbol ->
           lrAutomatonEdgesTable automaton Map.! node Map.! symbol
+
+-- reduces :: LRAutomaton -> Rule -> Terminal -> [([LRNode], [LRNode])]
+-- reduces automaton rule t =
+--   [(path node (ruleRhs rule), path node [NonTerminalSymbol (ruleLhs rule)]) |
+--    node <- lrAutomatonNodes automaton,
+--    any (\(item, la) -> item == lrItem rule && Set.member t la) (lrNodeItems node)]
+--   where path = scanl $ \node symbol ->
+--           lrAutomatonEdgesTable automaton Map.! node Map.! symbol
 
 acceptible :: LRNode -> Bool
 acceptible node = or [ruleLhs (lrItemRule item) == StartSymbol &&

@@ -146,7 +146,8 @@ tellShiftTransitions = do
 tellReduceTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                       => m ()
 tellReduceTransitions = do
-  syntax <- syntax_
+  syntax    <- syntax_
+  automaton <- automaton_
   tellsLn "  // reduce transitions"
   tellNewline
   forMWithSep_ (tellNewline >> tellNewline) (syntaxNonTerminals syntax) $ \nt -> do
@@ -154,5 +155,15 @@ tellReduceTransitions = do
       tells "  // " >> tellRule rule >> tellNewline
       tellNewline
       forMWithSep_ tellNewline (zip [1 .. ] (reduces automaton rule)) $ \(i, (src, dst)) -> do
-        (srcName, dstName) <- (,) <$> nodeName_ src <*> nodeName_ dst
-        tells "  implicit def reduce_" ++ 
+        srcName <- nodeName_ (head src)
+        tells ("  implicit def reduce_" ++ srcName ++ "_" ++ show i ++ "[Src, Dst]")
+        tells ("(implicit t : ")
+
+-- syntax :: Syntax
+-- automaton :: LALRAutomaton
+-- nt :: NonTerminal
+-- rule :: Rule
+-- src :: [LRNode]
+-- dst :: [LRNode]
+
+-------------------------------------------------------------------------------
