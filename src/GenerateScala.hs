@@ -7,6 +7,7 @@ module GenerateScala where
 import Utility
 import Syntax
 import LALRAutomaton
+import LRTable
 import CodeGenerateEnv
 
 import Data.Monoid
@@ -37,7 +38,8 @@ tellScala = do
     [tellASTDefinition,
      tellTransitionTraits,
      tellStackElements,
-     tellShiftTransitions]
+     tellTransitionImpls,
+     tellBegin]
   tellSeparator
   tellsLn "}"
   tellNewline
@@ -68,7 +70,7 @@ tellASTDefinition = do
     forM_ (syntaxRules syntax nt) $ \rule -> do
       let className = pascalCase (ruleName rule)
       tells ("  case class " ++ className ++ " ( ")
-      forMWithSep_ (tells ", ") (zip [1 ..] (ruleParams rule)) $ \(i, param) -> do
+      forMWithSep_ (tells ", ") (zip [1 ..] (concat (ruleParams rule))) $ \(i, param) -> do
         tells ("arg" ++ show i ++ " : " ++ param)
       tellsLn (" ) extends " ++ traitName)
 
@@ -78,25 +80,49 @@ tellTransitionTraits :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEn
                      => m ()
 tellTransitionTraits = do
   syntax <- syntax_
-  tellsLn "  // transitions"
+  tellsLn "  // transition type classes"
   tellNewline
   forMWithSep_ tellNewline (syntaxTerminals syntax) $ \case
     UserTerminal name params -> do
-      tellsLn ("  trait Transition" ++ pascalCase name ++ " [ Src, Dst ] {")
-      tellsLn ("    def transit( src : Src ) : Dst")
+      let ps = concat [", arg" ++ show i ++ " : " ++ param | (i, param) <- zip [1 ..] params]
+      tellsLn ("  trait " ++ pascalCase name ++ "Transition [ Src, Dst ] {")
+      tellsLn ("    def transit( src : Src"  ++ ps ++ " ) : Dst")
       tellsLn "  }"
     t -> error ("invalid terminal symbol found -- " ++ show t)
+  tellNewline
+  tellEndTransitionTrait
   tellNewline
   tellNewline
   tellsLn "  // implicit classes for transition methods"
   tellNewline
   forMWithSep_ tellNewline (syntaxTerminals syntax) $ \case
     UserTerminal name params -> do
-      tells ("  implicit class Transitable" ++ pascalCase name ++ " [ Src, Dst ] ")
-      tellsLn ("( implicit t : Transition" ++ pascalCase name ++ "[ Src, Dst ] ) {")
-      tellsLn ("    def " ++ name ++ "() : Dst = t.transit( src )")
+      let className = pascalCase name ++ "Transitable"
+      let implicitType = pascalCase name ++ "Transition[ Src, Dst ]"
+      let paramsSeq = intercalate ", " ["arg" ++ show i ++ " : " ++ param | (i, param) <- zip [1 ..] params]
+      let argsSeq = concat [", arg" ++ show i | (i, _) <- zip [1 ..] params]
+      tells ("  implicit class " ++ className ++ " [ Src, Dst ] ( src : Src ) ")
+      tellsLn ("( implicit t : " ++ implicitType ++ " ) {")
+      tellsLn ("    def " ++ name ++ "( " ++ paramsSeq ++ " ) : Dst = {")
+      tellsLn ("      t.transit( src" ++ argsSeq ++ " )")
+      tellsLn "    }"
       tellsLn "  }"
     t -> error ("invalid terminal symbol found -- " ++ show t)
+  tellNewline
+  tellEndTransitable
+
+
+tellEndTransitionTrait :: (MonadWriter (Endo String) m) => m ()
+tellEndTransitionTrait = do
+  tellsLn "  trait EndTransition [ Src, Dst ] {"
+  tellsLn "    def transit( src : Src ) : Dst"
+  tellsLn "  }"
+
+tellEndTransitable :: (MonadWriter (Endo String) m) => m ()
+tellEndTransitable = do
+  tellsLn "  implicit class EndTransitable [ Src, Dst ] ( src : Src ) ( implicit t : EndTransition[ Src, Dst ] ) {"
+  tellsLn "    def end() : Dst = t.transit( src )"
+  tellsLn "  }"
 
 -------------------------------------------------------------------------------
 
@@ -118,52 +144,100 @@ tellStackElements = do
 
 -------------------------------------------------------------------------------
 
-tellShiftTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
-                        => m ()
-tellShiftTransitions = do
-  automaton <- automaton_
-  tellsLn "  // shift transitions"
+tellTransitionImpls :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                => m ()
+tellTransitionImpls = do
+  table <- lrTable_
+  tellsLn "  // transition implementations"
   tellNewline
-  let shiftTransitions = groupBy (equaling fst) (shifts automaton)
-  forMWithSep_ (tellNewline >> tellNewline) shiftTransitions $ \transitions -> do
-    forMWithSep_ tellNewline transitions $ \(terminal, (src, dst)) -> do
-      case terminal of
-        UserTerminal name params -> do
-          (srcName, dstName) <- (,) <$> nodeName_ src <*> nodeName_ dst
-          let srcType = srcName ++ "[ Prev ]"
-          let dstType = dstName ++ "[ " ++ srcName ++ "[ Prev ] ]"
-          let transitionType = "Transition" ++ pascalCase name ++ "[ " ++ srcType ++ ", " ++ dstType ++ " ]"
-          tells ("  implicit def shift_" ++ srcName ++ "_" ++ name)
-          tellsLn (" [ Prev ] : " ++ transitionType ++ " = {")
-          tellsLn ("    new " ++ transitionType ++ " {")
-          tells ("      def transit( src : " ++ srcType ++ " ) : " ++ dstType)
-          tellsLn (" = " ++ dstType ++ "( src )")
-          tellsLn "    }"
-          tellsLn "  }"
+  forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> do
+    case action of
+      Shift  dst  -> tellShiftTransitionImpl  src t dst
+      Reduce rule -> tellReduceTransitionImpl src t rule
+      Accept      -> tellAcceptTransitionImpl src
+
+
+tellShiftTransitionImpl :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                        => LRNode -> Terminal -> LRNode -> m ()
+tellShiftTransitionImpl src t dst = do
+  srcName <- pascalCase <$> nodeName_ src
+  dstName <- pascalCase <$> nodeName_ dst
+  case t of
+    EndOfInput -> error "impossible occurs: an EndOfInput is given to tellShiftTransitionImpl"
+    UserTerminal name params -> do
+      let methodName = "shift" ++ srcName ++ pascalCase name
+      let srcType = srcName ++ "[ Prev ]"
+      let dstType = dstName ++ "[ " ++ srcType ++ " ]"
+      let transitionType = pascalCase name ++ "Transition[ " ++ srcType ++ ", " ++ dstType ++ " ]"
+      let paramsSeq = concat [", arg" ++ show i ++ " : " ++ pascalCase param | (i, param) <- zip [1 ..] params]
+      let argsSeq = concat [", arg" ++ show i | (i, _) <- zip [1 ..] params]
+      tellsLn ("  implicit def " ++ methodName ++ "[ Prev ] : " ++ transitionType ++ " = {")
+      tellsLn ("    new " ++ transitionType ++ " {")
+      tellsLn ("      def transit( src : " ++ srcType ++ paramsSeq ++ " ) : " ++ dstType ++ " = {")
+      tellsLn ("        " ++ dstType ++ "( src" ++ argsSeq ++ " )")
+      tellsLn "      }"
+      tellsLn "    }"
+      tellsLn "  }"
+
+tellReduceTransitionImpl :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                         => LRNode -> Terminal -> Rule -> m ()
+tellReduceTransitionImpl src t rule = do
+  srcName <- pascalCase <$> nodeName_ src
+  let tName = terminalName t
+  let pathToType path = case path of
+        []          -> return "Prev"
+        node : rest -> do nodeName <- pascalCase <$> nodeName_ node
+                          restType <- pathToType rest
+                          return (nodeName ++ "[ " ++ restType ++ " ]")
+  reduces <- reducesFrom_ src rule
+  forM_ (zip [1 ..] reduces) $ \(i, (srcPath, dstPath)) -> do
+    srcType <- pathToType srcPath
+    dstType <- pathToType dstPath
+    let methodName = "reduce" ++ srcName ++ pascalCase tName ++ show i
+    let implicitType = pascalCase tName ++ "Transition[ " ++ dstType ++ ", Dst ]"
+    let transitionType = pascalCase tName ++ "Transition[ " ++ srcType ++ ", Dst ]"
+    let paramsSeq = concat [", arg" ++ show i ++ " : " ++ param | (i, param) <- zip [1 ..] (terminalParams t)]
+    let argsSeq = concat [", arg" ++ show i | (i, _) <- zip [1 ..] (terminalParams t)]
+    let reductionRule = pascalCase (ruleName rule)
+    let reductionArgs = let
+            pss = ruleParams rule
+            ps = ["src" ++ concat (replicate (length pss - i) ".prev") ++ ".arg" ++ show j |
+                  (i, ps) <- zip [1 ..] pss, (j, p) <- zip [1 ..] ps]
+          in intercalate ", " ps
+    tellsLn ("  implicit def " ++ methodName ++ "[ Prev, Dst ] ( implicit t : " ++ implicitType ++ " ) : " ++ transitionType ++ " = {")
+    tellsLn ("    new " ++ transitionType ++ " {")
+    tellsLn ("      def transit( src : " ++ srcType ++ paramsSeq ++ " ) : Dst = {")
+    tellsLn ("        val prev = src" ++ concat (".prev" <$ ruleRhs rule))
+    tellsLn ("        val tree = " ++ reductionRule ++ "( " ++ reductionArgs ++ " )")
+    tellsLn ("        t.transit( " ++ dstType ++ "( prev, tree )" ++ argsSeq ++ " )")
+    tellsLn "      }"
+    tellsLn "    }"
+    tellsLn "  }"
+
+tellAcceptTransitionImpl :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                         => LRNode -> m ()
+tellAcceptTransitionImpl src = do
+  srcName              <- pascalCase <$> nodeName_ src
+  let methodName = "accept" ++ srcName
+  let srcType = srcName ++ "[ Prev ]"
+  NonTerminalSymbol nt <- nodeType_ src
+  let resultType = pascalCase (nonTerminalName nt)
+  let transitionType = "EndTransition[ " ++ srcType ++ ", " ++ resultType ++ " ]"
+  tellsLn ("  implicit def " ++ methodName ++ "[ Prev ] : " ++ transitionType ++ " = {")
+  tellsLn ("    new " ++ transitionType ++ " {")
+  tellsLn ("      def transit( src : " ++ srcType ++ " ) : " ++ resultType ++ " = {")
+  tellsLn "        src.arg1"
+  tellsLn "      }"
+  tellsLn "    }"
+  tellsLn "  }"
 
 -------------------------------------------------------------------------------
 
-tellReduceTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
-                      => m ()
-tellReduceTransitions = do
-  syntax    <- syntax_
-  automaton <- automaton_
-  tellsLn "  // reduce transitions"
-  tellNewline
-  forMWithSep_ (tellNewline >> tellNewline) (syntaxNonTerminals syntax) $ \nt -> do
-    forMWithSep_ tellNewline (syntaxRules syntax nt) $ \rule -> do
-      tells "  // " >> tellRule rule >> tellNewline
-      tellNewline
-      forMWithSep_ tellNewline (zip [1 .. ] (reduces automaton rule)) $ \(i, (src, dst)) -> do
-        srcName <- nodeName_ (head src)
-        tells ("  implicit def reduce_" ++ srcName ++ "_" ++ show i ++ "[Src, Dst]")
-        tells ("(implicit t : ")
-
--- syntax :: Syntax
--- automaton :: LALRAutomaton
--- nt :: NonTerminal
--- rule :: Rule
--- src :: [LRNode]
--- dst :: [LRNode]
+tellBegin :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+          => m ()
+tellBegin = do
+  startNode <- lrAutomatonStart <$> automaton_
+  startName <- pascalCase <$> nodeName_ startNode
+  tellsLn ("  def begin() : " ++ startName ++ "[ Unit ] = " ++ startName ++ "( () )")
 
 -------------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+Add (Add (TToE (FToT (Num 1))) (FToT (Num 2))) (FToT (Num 3))

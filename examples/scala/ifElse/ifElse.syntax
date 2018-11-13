@@ -1,0 +1,8 @@
+
+syntax ifElse (Expr) {
+  Return     : Expr -> "return_(String)"
+  IfThen     : Expr -> "if_(Boolean)" Then
+  IfThenElse : Expr -> "if_(Boolean)" Then Else
+  ThenClause : Then -> "then_" Expr
+  ElseClause : Else -> "else_" Expr
+}

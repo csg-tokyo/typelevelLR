@@ -1,0 +1,30 @@
+
+syntax expr2 (e) {
+  int_expr   : e -> int_e
+  float_expr : e -> float_e
+
+  int_add    : int_e -> int_e "plus" int_t
+  int_sub    : int_e -> int_e "minus" int_t
+  int_e_to_t : int_e -> int_t
+  int_mul    : int_t -> int_t "times" int_f
+  int_mod    : int_t -> int_t "mod" int_f
+  int_t_to_f : int_t -> int_f
+  int_lit    : int_f -> "int" (Integer)
+  int_paren  : int_f -> "lp" int_e "rp"
+  floor      : int_f -> "floor" float_f
+  ceil       : int_f -> "ceil"  float_f
+
+  float_add     : float_e -> float_e "add" float_t
+  float_sub     : float_e -> float_e "sub" float_t
+  float_e_to_t  : float_e -> float_t
+  float_mul     : float_t -> float_t "times" float_f
+  float_t_to_f  : float_t -> float_f
+  float_lit     : float_f -> "float" (Double)
+  float_lit_exp : float_f -> "exp" (Double, Integer)
+  float_paren   : float_f -> "lp" float_e "rp"
+
+  div_int_int     : float_t -> int_t   "divided_by" int_f
+  div_int_float   : float_t -> int_t   "divided_by" float_f
+  div_float_int   : float_t -> float_t "divided_by" int_f
+  div_float_float : float_t -> float_t "divided_by" float_f
+}

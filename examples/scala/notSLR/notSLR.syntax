@@ -1,0 +1,10 @@
+
+syntax notSLR (S) {
+  Rule1 : S -> "a" "g" "d"
+  Rule2 : S -> "a" A   "c"
+  Rule3 : S -> "b" A   "d"
+  Rule4 : S -> "b" "g" "c"
+  Rule5 : A -> B
+  Rule6 : B -> "g"
+}
+

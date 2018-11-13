@@ -45,6 +45,13 @@ lrAutomatonNext :: LRAutomaton -> LRNode -> Symbol -> Maybe LRNode
 lrAutomatonNext automaton src sym = do
   return (lrAutomatonEdgesTable automaton) >>= Map.lookup src >>= Map.lookup sym
 
+lrAutomatonTerminals :: LRAutomaton -> [Terminal]
+lrAutomatonTerminals automaton = do
+  symbol <- Map.elems (lrAutomatonEdgesTable automaton) >>= Map.keys
+  case symbol of
+    TerminalSymbol t -> return t
+    _                -> mzero
+
 -------------------------------------------------------------------------------
 
 lrItem :: Rule -> LRItem
@@ -70,33 +77,34 @@ leadingNonTerminals node = mapMaybe search (lrNodeItems node)
           NonTerminalSymbol nt : rest -> Just (nt, rest, la)
           _                           -> Nothing
 
-lrNode :: Syntax -> FirstSetTable -> LRItem -> Set.Set Terminal -> LRNode
-lrNode syntax table item la = complement (LRNode (Map.singleton item la))
+lrNode :: Syntax -> NullableTable -> FirstSetTable -> LRItem -> Set.Set Terminal -> LRNode
+lrNode syntax nullable table item la = complement (LRNode (Map.singleton item la))
   where complement = fixPoint (\node -> node <> grow node)
         grow node = foldMap LRNode $ do
           (nt, rest, la) <- leadingNonTerminals node
           rule <- syntaxRules syntax nt
-          return (Map.singleton (lrItem rule) (firstSet syntax table la rest))
+          return (Map.singleton (lrItem rule) (firstSet syntax nullable table la rest))
 
-initialLRNode :: Syntax -> FirstSetTable -> LRNode
-initialLRNode syntax table = lrNode syntax table (lrItem startRule) (Set.singleton EndOfInput)
-  where startRule = Rule "(StartRule)" StartSymbol [NonTerminalSymbol (syntaxStart syntax)]
+initialLRNode :: Syntax -> NullableTable -> FirstSetTable -> LRNode
+initialLRNode syntax nullable table = lrNode syntax nullable table start (Set.singleton EndOfInput)
+  where start = lrItem (startRule (syntaxStart syntax))
 
-lrTransitions :: Syntax -> FirstSetTable -> LRNode -> Map.Map Symbol LRNode
-lrTransitions syntax table src = Map.fromListWith mappend $ do
+lrTransitions :: Syntax -> NullableTable -> FirstSetTable -> LRNode -> Map.Map Symbol LRNode
+lrTransitions syntax nullable table src = Map.fromListWith mappend $ do
   (item, la)      <- lrNodeItems src
   (symbol, item') <- maybe [] return (lrItemNext item)
-  return (symbol, lrNode syntax table item' la)
+  return (symbol, lrNode syntax nullable table item' la)
 
 -------------------------------------------------------------------------------
 
 lr1Automaton :: Syntax -> LRAutomaton
 lr1Automaton syntax = fixPoint grow seed
-  where table          = buildFirstSetTable syntax
-        seed           = LRAutomaton (initialLRNode syntax table) Map.empty
+  where nullable        = buildNullableTable syntax
+        table          = buildFirstSetTable syntax nullable
+        seed           = LRAutomaton (initialLRNode syntax nullable table) Map.empty
         grow automaton = LRAutomaton (lrAutomatonStart automaton) $
           Map.fromListWith (Map.unionWith mappend) $
-            [(node, lrTransitions syntax table node) |
+            [(node, lrTransitions syntax nullable table node) |
              node <- lrAutomatonNodes automaton]
 
 lalrAutomaton :: Syntax -> LRAutomaton

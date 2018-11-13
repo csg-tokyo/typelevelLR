@@ -9,6 +9,7 @@ import CodeGenerateEnv
 
 import qualified GenerateHaskell as GenHs
 import qualified GenerateCpp     as GenCpp
+import qualified GenerateScala   as GenScala
 
 import System.FilePath       ((</>))
 import Data.Monoid           (Endo(appEndo))
@@ -57,5 +58,22 @@ generateCpp src dst = do
   writeFile  hppFilePath     hppCode
   writeFile  cppFilePath     cppCode
   writeFile  hppImplFilePath hppImplCode
+
+-------------------------------------------------------------------------------
+
+generateScala :: FilePath -> FilePath -> IO ()
+generateScala src dst = do
+  syntaxSource <- readFile src
+  let syntax = case parse parseSyntax src syntaxSource of
+        Left  err -> error (show err)
+        Right s   -> s
+  let automaton = lalrAutomaton syntax
+  let env = buildCodeGenerateEnv syntax automaton
+
+  let scalaFilePath = dst </> (syntaxName syntax ++ ".scala")
+
+  let scalaCode = generate (runReaderT GenScala.tellScala env)
+
+  writeFile scalaFilePath scalaCode
 
 -------------------------------------------------------------------------------

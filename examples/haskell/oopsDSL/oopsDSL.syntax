@@ -1,0 +1,6 @@
+
+syntax OopsDSL (Oops) {
+  AddPs : Oops -> Os "ps"
+  AddO  : Os   -> "o" Os
+  EndOs : Os   -> eps
+}

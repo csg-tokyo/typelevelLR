@@ -13,7 +13,15 @@ import Control.Monad.Writer    (MonadWriter(tell), execWriterT)
 import Control.Monad.Trans     (lift)
 import Control.Monad.IO.Class  (MonadIO(liftIO))
 import Data.Char               (isSpace, isAlpha, toLower)
-import Generate                (generateHaskell, generateCpp)
+import Generate                (generateHaskell, generateCpp, generateScala)
+
+-------------------------------------------------------------------------------
+
+cCompiler :: String
+cCompiler = "g++"
+
+ccOptions :: [String]
+ccOptions = ["-std=c++17"]
 
 -------------------------------------------------------------------------------
 
@@ -53,23 +61,6 @@ getTestType = map toLower
 
 -------------------------------------------------------------------------------
 
-isValidWorkspace :: FilePath -> FilePath -> IO Bool
-isValidWorkspace base path = (`runContT` return) $ callCC $ \exit -> do
-  unlessM (lift (doesDirectoryExist (base </> path))) $ do
-    exit False
-  unlessM (lift (doesFileExist (base </> path </> path <.> "syntax"))) $ do
-    exit False
-  return True
-
-getWorkspaces :: IO [(FilePath, FilePath)]
-getWorkspaces = do
-  let basePath = "examples"
-  paths      <- listDirectory basePath
-  validPaths <- filterM (isValidWorkspace basePath) paths
-  return [(basePath </> validPath, validPath) | validPath <- validPaths]
-
--------------------------------------------------------------------------------
-
 -- shouldSetup :: FilePath -> IO Bool
 -- shouldSetup syntaxName = do
 --   syntaxModificated <- getModificationTime (syntaxName <.> "syntax")
@@ -82,31 +73,48 @@ getWorkspaces = do
 --                                      cppGenerated,
 --                                      hppImplGenerated])
 
-setupWorkspace :: FilePath -> FilePath -> IO ()
-setupWorkspace workspace syntaxName = withCurrentDirectory workspace $ do
-  -- whenM (shouldSetup syntaxName) $ do
+setupHaskell :: FilePath -> FilePath -> IO ()
+setupHaskell workspace syntaxName = do
+  withCurrentDirectory workspace $ do
     unlessM (doesFileExist (syntaxName <.> "syntax")) $ do
       error "no syntax file found"
     generateHaskell (syntaxName <.> "syntax") "."
-    generateCpp     (syntaxName <.> "syntax") "."
-    (exitCode, _, _) <- runShell ["g++", "-std=c++14", "-c", syntaxName <.> "cpp"]
-    when (exitCode /= ExitSuccess) $ do
-      error ("compile failure -- " ++ workspace </> syntaxName <.> "cpp")
+
+setupCpp :: FilePath -> FilePath -> IO ()
+setupCpp workspace syntaxName = do
+  withCurrentDirectory workspace $ do
+    unlessM (doesFileExist (syntaxName <.> "syntax")) $ do
+      error "no syntax file found"
+    generateCpp (syntaxName <.> "syntax") "."
+
+setupScala :: FilePath -> FilePath -> IO ()
+setupScala workspace syntaxName = do
+  withCurrentDirectory workspace $ do
+    unlessM (doesFileExist (syntaxName <.> "syntax")) $ do
+      error "no syntax file found"
+    generateScala (syntaxName <.> "syntax") "."
+    writeFile "build.sbt" "scalaVersion := 2.12.4"
 
 -------------------------------------------------------------------------------
 
-cleanupWorkspace :: FilePath -> FilePath -> IO ()
-cleanupWorkspace workspace syntaxName = withCurrentDirectory workspace $ do
-  return ()  -- should remove .o, .out?
+cleanupCpp :: FilePath -> FilePath -> IO ()
+cleanupCpp workspace syntaxName = withCurrentDirectory workspace $ do
+  runShell ["rm", "*.o", "*.out"]
+  return ()
+
+cleanupHaskell :: FilePath -> FilePath -> IO ()
+cleanupHaskell workspace syntaxName = withCurrentDirectory workspace $ do
+  runShell ["rm", "*.out"]
+  return ()
 
 -------------------------------------------------------------------------------
 
 buildAndExecuteCpp :: FilePath -> FilePath -> IO (Maybe String)
 buildAndExecuteCpp syntaxName target = (`runContT` return) $ callCC $ \exit -> do
-  (exitCode1, _, _) <- runShell ["g++", "-std=c++14", "-c", target <.> "cpp"]
+  (exitCode1, _, _) <- runShell ([cCompiler] ++ ccOptions ++ ["-c", target <.> "cpp"])
   when (exitCode1 /= ExitSuccess) (exit Nothing)
 
-  (exitCode2, _, _) <- runShell ["g++", "-std=c++14", "-o", target <.> "out", syntaxName <.> "o", target <.> "o"]
+  (exitCode2, _, _) <- runShell ([cCompiler] ++ ccOptions ++ ["-o", target <.> "out", syntaxName <.> "o", target <.> "o"])
   when (exitCode2 /= ExitSuccess) (exit Nothing)
 
   (exitCode3, output, _) <- runShell ["." </> target <.> "out"]
@@ -127,46 +135,75 @@ buildAndExecuteHs syntaxName target = (`runContT` return) $ callCC $ \exit -> do
 
   return (Just output)
 
+buildAndExecuteScala :: FilePath -> FilePath -> IO (Maybe String)
+buildAndExecuteScala syntaxName target = (`runContT` return) $ callCC $ \exit -> do
+  (exitCode1, output, _) <- runShell ["sbt", "run"]
+  when (exitCode1 /= ExitSuccess) (exit Nothing)
+  return (Just output)
+
 -------------------------------------------------------------------------------
 
-testWorkspace :: FilePath -> FilePath -> Spec
-testWorkspace workspace syntaxName = do
+testWorkspace :: FilePath -> (FilePath -> FilePath -> IO (Maybe String)) -> FilePath -> FilePath -> Spec
+testWorkspace extension execute workspace syntaxName = do
   targets_ <- runIO $ listDirectory workspace
   let targets = filter (("test" `isPrefixOf`) . map toLower) targets_
-
-  -- test .hs tests
-  forM_ (filter (".hs" `isSuffixOf`) targets) $ \target -> do
-    let targetName = dropEnd (length ".hs") target
+  forM_ (filter (extension `isSuffixOf`) targets) $ \target -> do
+    let targetName = dropEnd (length extension) target
     it ("correctly works for " ++ workspace </> target) $ do
       withCurrentDirectory workspace $ do
-        result <- buildAndExecuteHs syntaxName targetName
+        result <- execute syntaxName targetName
         case getTestType target of
           "valid" -> do
             expected <- readFile (target <.> "expected")
-            strip <$> result `shouldBe` Just (strip expected)
+            fmap strip result `shouldBe` Just (strip expected)
           "invalid" -> do
             result `shouldBe` Nothing
           testType -> error ("unknown test type -- " ++ testType)
 
-  -- test .cpp tests
-  forM_ (filter (".cpp" `isSuffixOf`) targets) $ \target -> do
-    let targetName = dropEnd (length ".cpp") target
-    it ("correctly works for " ++ workspace </> target) $ do
-      withCurrentDirectory workspace $ do
-        result <- buildAndExecuteCpp syntaxName targetName
-        case getTestType target of
-          "valid" -> do
-            expected <- readFile (target <.> "expected")
-            strip <$> result `shouldBe` Just (strip expected)
-          "invalid" -> do
-            result `shouldBe` Nothing
+testHaskell :: FilePath -> FilePath -> Spec
+testHaskell = testWorkspace ".hs" buildAndExecuteHs
+
+testCpp :: FilePath -> FilePath -> Spec
+testCpp = testWorkspace ".cpp" buildAndExecuteCpp
+
+testScala :: FilePath -> FilePath -> Spec
+testScala = testWorkspace ".scala" buildAndExecuteScala
+
+-------------------------------------------------------------------------------
+
+isValidWorkspace :: FilePath -> FilePath -> IO Bool
+isValidWorkspace base path = (`runContT` return) $ callCC $ \exit -> do
+  unlessM (lift (doesDirectoryExist (base </> path))) $ do
+    exit False
+  unlessM (lift (doesFileExist (base </> path </> path <.> "syntax"))) $ do
+    exit False
+  return True
+
+-------------------------------------------------------------------------------
 
 integratedSpec :: Spec
 integratedSpec = describe "test examples in exmples/" $ do
-    workspaces <- runIO getWorkspaces
-    forM_ workspaces $ \(workspace, syntaxName) -> do
-      beforeAll_ (setupWorkspace workspace syntaxName) $ do
-        afterAll_ (cleanupWorkspace workspace syntaxName) $ do
-          testWorkspace workspace syntaxName
+  languages <- runIO (listDirectory "examples")
+  forM_ languages $ \lang -> do
+    let basePath = "examples" </> lang
+    workspaces <- runIO (listDirectory basePath >>= filterM (isValidWorkspace basePath))
+    forM_ workspaces $ \workspace_ -> do
+      let syntaxName = workspace_
+      let workspace = basePath </> workspace_
+      case lang of
+        "haskell" -> do
+          runIO (putStrLn ("workspace: " ++ workspace ++ ", syntaxName: " ++ syntaxName))
+          beforeAll_ (setupHaskell workspace syntaxName) $ do
+            afterAll_ (cleanupHaskell workspace syntaxName) $ do
+              testHaskell workspace syntaxName
+        "cpp" -> do
+          beforeAll_ (setupCpp workspace syntaxName) $ do
+            afterAll_ (cleanupCpp workspace syntaxName) $ do
+              testCpp workspace syntaxName
+        "scala" -> do
+          beforeAll_ (setupScala workspace syntaxName) $ do
+            testScala workspace syntaxName
+        _ -> do
+          runIO (putStrLn ("warning: unknown lang -- " ++ lang))
 
 -------------------------------------------------------------------------------

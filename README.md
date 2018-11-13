@@ -6,6 +6,7 @@
 - Supporting lauguages are:
     - Haskell
     - C++
+    - Scala
 
 ### How to Install
 
@@ -21,14 +22,14 @@
         syntax helloDSL (Start) {
             simpleHello   : Start -> "hello"
             helloWithName : Start -> "hello" Name
-            nameString    : Name  -> str
+            nameString    : Name  -> "str(String)"
         }
 
-1. Generate Fluent DSL Library
+2. Generate Fluent DSL Library
 
-        > typelevelLR -hs hello.syntax
+        > typelevelLR --hs hello.syntax
 
-1. Import Fluent DSL Library
+3. Import Fluent DSL Library
 
         > nano MyApp.hs
         import HelloDSL
@@ -39,7 +40,7 @@
         > runghc MyApp.hs
         HelloWithName (NameString "ymzk")
 
-1. Define semantics
+4. Define semantics
 
         > nano HelloDSLSemantics.hs
         module HelloDSLSemantics where
@@ -50,7 +51,7 @@
         runHelloDSL SimpleHello name) = putStrLn "Hello!!"
         runHelloDSL (HelloWithName (NameString name)) = putStrLn ("Hello, " ++ name ++ ".")
 
-1. Run it
+5. Run it
 
         > nano MyApp.hs
         module MyApp where

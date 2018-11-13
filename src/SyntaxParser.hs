@@ -41,7 +41,7 @@ parseRule = do
   name <- parseIdentifier
   ws' *> string ":" *> ws'
   lhs <- parseNonTerminal
-  ws' *> (string "=" <|> string "->") *> ws'
+  ws' *> (string "=" <|> string "->" <|> string "<-") *> ws'
   rhs <- parseDerivation
   return (Rule name lhs rhs)
 
@@ -63,7 +63,7 @@ parseTerminal = do
   name <- parseIdentifier
   params <- option [] $ do
     string "(" *> ws'
-    params <- option [] (trySepBy parseIdentifier (ws' *> string "," *> ws'))
+    params <- option [] (trySepBy parseParam (ws' *> string "," *> ws'))
     ws' <* string ")"
     return params
   string "\""
@@ -72,6 +72,14 @@ parseTerminal = do
 parseIdentifier :: (Stream s m Char) => ParsecT s u m String
 parseIdentifier = many1 (satisfy isIdentifierChar)
   where isIdentifierChar c = not (isSpace c) && not (c `elem` "\"()=-|,;:{}")
+
+parseParam :: (Stream s m Char) => ParsecT s u m String
+parseParam = concat <$> many1 go
+  where go  =  string "(" <++> parseParam <++> string ")"
+           <|> string "{" <++> parseParam <++> string "}"
+           <|> string "[" <++> parseParam <++> string "]"
+           <|> pure <$> satisfy (\c -> not (c `elem` "()[]{}"))
+        p1 <++> p2 = (++) <$> p1 <*> p2
   -- 対象言語によって使える文字が異なるので，とりあえず受け入れておいてから対象言語のコンパイラにエラーを出してもらう方針
   -- '"', '(', ')' を identifier につかうなら try を追加する必要がある
 

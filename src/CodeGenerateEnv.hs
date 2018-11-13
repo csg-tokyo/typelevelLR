@@ -6,6 +6,7 @@ module CodeGenerateEnv (module CodeGenerateEnv) where
 import Utility
 import Syntax
 import LALRAutomaton
+import LRTable
 
 import Control.Monad.Reader
 
@@ -17,6 +18,7 @@ import qualified Data.Set as Set
 data CodeGenerateEnv = CodeGenerateEnv {
   codeGenerateEnvSyntax        :: Syntax,
   codeGenerateEnvAutomaton     :: LRAutomaton,
+  codeGenerateEnvLRTable       :: LRTable,
   codeGenerateEnvNodeInfoTable :: NodeInfoTable
 }
 
@@ -28,8 +30,9 @@ data NodeInfo = NodeInfo { nodeInfoName :: String,
 -------------------------------------------------------------------------------
 
 buildCodeGenerateEnv :: Syntax -> LRAutomaton -> CodeGenerateEnv
-buildCodeGenerateEnv syntax automaton = CodeGenerateEnv syntax automaton nodeInfoTable
-  where nodeInfoTable = buildNodeInfoTable automaton
+buildCodeGenerateEnv syntax automaton = CodeGenerateEnv syntax automaton table nodeInfoTable
+  where table       = lrTable automaton
+        nodeInfoTable = buildNodeInfoTable automaton
 
 buildNodeInfoTable :: LRAutomaton -> NodeInfoTable
 buildNodeInfoTable automaton = Map.fromList $ do
@@ -48,6 +51,10 @@ syntax_ = asks codeGenerateEnvSyntax
 automaton_ :: (MonadReader CodeGenerateEnv m) => m LRAutomaton
 automaton_ = asks codeGenerateEnvAutomaton
 
+lrTable_ :: (MonadReader CodeGenerateEnv m) => m LRTable
+lrTable_ = asks codeGenerateEnvLRTable
+
+
 nodeInfo_ :: (MonadReader CodeGenerateEnv m) => LRNode -> m NodeInfo
 nodeInfo_ node = asks ((Map.! node) . codeGenerateEnvNodeInfoTable)
 
@@ -56,6 +63,15 @@ nodeName_ node = nodeInfoName <$> nodeInfo_ node
 
 nodeType_ :: (MonadReader CodeGenerateEnv m) => LRNode -> m Symbol
 nodeType_ node = nodeInfoType <$> nodeInfo_ node
+
+
+-- REMEMBER: inefficient algorithm
+reducesFrom_ :: (MonadReader CodeGenerateEnv m) => LRNode -> Rule -> m [([LRNode], [LRNode])]
+reducesFrom_ node rule = do
+  automaton <- automaton_
+  return [(reverse srcPath, reverse dstPath) |
+          (srcPath, dstPath) <- reduces automaton rule,
+          last srcPath == node]
 
 -------------------------------------------------------------------------------
 
@@ -66,9 +82,15 @@ nodes_ = do nodes <- lrAutomatonNodes <$> automaton_
 nonTerminals_ :: (MonadReader CodeGenerateEnv m) => m [NonTerminal]
 nonTerminals_ = syntaxNonTerminals <$> syntax_
 
-ruleParams :: Rule -> [String]
-ruleParams rule = ruleRhs rule >>= symbolParams
-  where symbolParams (NonTerminalSymbol nt) = return (pascalCase (nonTerminalName nt))
-        symbolParams (TerminalSymbol (UserTerminal _ params)) = params
+ruleParams :: Rule -> [[String]]
+ruleParams rule = [symbolParams symbol | symbol <- ruleRhs rule]
+
+symbolParams :: Symbol -> [String]
+symbolParams (NonTerminalSymbol nt) = [pascalCase (nonTerminalName nt)]
+symbolParams (TerminalSymbol (UserTerminal _ params)) = params
+symbolParams _  = []
+
+nodeParams_ :: (MonadReader CodeGenerateEnv m) => LRNode -> m [String]
+nodeParams_ node = symbolParams <$> nodeType_ node
 
 -------------------------------------------------------------------------------

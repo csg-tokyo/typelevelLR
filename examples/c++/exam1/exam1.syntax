@@ -1,0 +1,19 @@
+
+syntax exam1 (Graph) {
+  Directed      : Graph     -> "digraph(std::string)" Stmts
+  Undirected    : Graph     -> "graph(std::string)" Stmts
+  StmtsCons     : Stmts     -> Stmt Stmts
+  StmtsNull     : Stmts     -> eps
+  NodeStmt      : Stmt      -> "node(std::string)" Ands NodeAttrs
+  AndsCons      : Ands      -> "and_(std::string)" Ands
+  AndsNull      : Ands      -> eps
+  EdgeStmt      : Stmt      -> "edge(std::string)" Ands "to(std::string)" Ands EdgeAttrs
+  NodeAttrsCons : NodeAttrs -> NodeAttr NodeAttrs
+  NodeAttrsNull : NodeAttrs -> eps
+  EdgeAttrsCons : EdgeAttrs -> EdgeAttr EdgeAttrs
+  EdgeAttrsNull : EdgeAttrs -> eps
+  NodeAttrColor : NodeAttr  -> "color(std::string)"
+  NodeAttrShape : NodeAttr  -> "shape(std::string)"
+  EdgeAttrColor : EdgeAttr  -> "color(std::string)"
+  EdgeAttrStyle : EdgeAttr  -> "style(std::string)"
+}

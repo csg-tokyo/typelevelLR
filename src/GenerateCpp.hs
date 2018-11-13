@@ -7,26 +7,61 @@ module GenerateCpp where
 import Utility
 import Syntax
 import LALRAutomaton
-import CodeGenerateEnv
+import LRTable
+import CodeGenerateEnv hiding (symbolParams, ruleParams, nodeParams_)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Data.Monoid           (Endo())
+import Data.Monoid           (Endo(appEndo))
 import Control.Monad         (forM_, replicateM_)
 import Control.Arrow         ((***))
-import Control.Monad.Writer  (MonadWriter())
-import Control.Monad.Reader  (MonadReader())
+import Control.Monad.Writer  (MonadWriter(), execWriter)
+import Control.Monad.Reader  (MonadReader(), runReaderT)
 import Control.Monad.State
 
 import Data.Either           (isRight)
 import Data.Maybe            (mapMaybe)
-import Data.List             (isPrefixOf, groupBy)
+import Data.List             (isPrefixOf, groupBy, intercalate)
 
 -------------------------------------------------------------------------------
 
 tellSeparator :: (MonadWriter (Endo String) m) => m ()
 tellSeparator = tellNewline >> tellsLn (replicate 119 '/') >> tellNewline
+
+-------------------------------------------------------------------------------
+
+sharedPtr :: String -> String
+sharedPtr typ = "std::shared_ptr< " ++ typ ++ " >"
+
+weakPtr :: String -> String
+weakPtr typ = "std::weak_ptr< " ++ typ ++ " >"
+
+-------------------------------------------------------------------------------
+
+nonTerminalType :: NonTerminal -> String
+nonTerminalType nt = sharedPtr (nonTerminalName nt)
+
+symbolParams :: Symbol -> [String]
+symbolParams (NonTerminalSymbol nt) = [nonTerminalType nt]
+symbolParams (TerminalSymbol (UserTerminal t params)) = params
+symbolParams (TerminalSymbol EndOfInput) = []
+
+ruleParams :: Rule -> [[String]]
+ruleParams rule = map symbolParams (ruleRhs rule)
+
+nodeParams_ :: (MonadReader CodeGenerateEnv m) => LRNode -> m [String]
+nodeParams_ node = symbolParams <$> nodeType_ node
+
+-------------------------------------------------------------------------------
+
+generate :: Syntax -> IO ()
+generate s = do
+  let name = syntaxName s
+  let env = buildCodeGenerateEnv s (lalrAutomaton s)
+  writeFile (name ++ ".hpp") (appEndo (execWriter (runReaderT tellHpp env)) "")
+  writeFile (name ++ ".cpp") (appEndo (execWriter (runReaderT tellCpp env)) "")
+  writeFile (name ++ ".hpp.impl") (appEndo (execWriter (runReaderT tellHppImpl env)) "")
 
 -------------------------------------------------------------------------------
 -- generate .hpp
@@ -101,7 +136,7 @@ tellASTBasePrototypes = do
     tellsLn "  class Visitor;"
     tellsLn "  class ConstVisitor;"
     tellNewline
-    tellsLn ("  virtual ~" ++ className ++ "() noexcept {}")
+    tellsLn ("  virtual ~" ++ className ++ "() noexcept;")
     tellNewline
     tellsLn "  virtual void accept( Visitor& ) = 0;"
     tellsLn "  virtual void accept( ConstVisitor& ) const = 0;"
@@ -120,10 +155,10 @@ tellASTSubPrototypes = do
     forMWithSep_ tellNewline (syntaxRules syntax nt) $ \rule -> do
       let className = pascalCase (ruleName rule)
       let args = [(typ, "arg" ++ show i) |
-                  (i, typ) <- zip [1 ..] (ruleParams rule)]
+                  (i, typ) <- zip [1 ..] (concat (ruleParams rule))]
       tells ("class " ++ className ++ " : public " ++ baseClassName)
       tells ", public std::tuple< "
-      forMWithSep_ (tells ", ") args $ \(argType, _) -> tells argType
+      forMWithSep_ (tells ", ") args $ \(argType, argName) -> tells argType
       tellsLn " > {"
       tellsLn "public:"
       -- constructor
@@ -185,22 +220,16 @@ tellAutomatonNodePrototypes = do
     let className = pascalCase nodeName
     tellsLn ("class " ++ className ++ " {")
     tellsLn "public:"
-    case nodeType of
-      NonTerminalSymbol nt -> do
-        tellsLn ("  " ++ nonTerminalName nt ++ " content;")
-        tellsLn ("  explicit " ++ className ++ "( " ++ nonTerminalName nt ++ " const& content_ );")
-      TerminalSymbol (UserTerminal name params) -> do
+    params <- nodeParams_ node
+    case params of
+      [] -> tellsLn ("  explicit " ++ className ++ "();")
+      _  -> do
         forM_ (zip [1 ..] params) $ \(i, param) -> do
-          tellsLn ("  " ++ param ++ " arg" ++ show i)
-        tells ("  explicit " ++ className)
-        case params of
-          [] -> tellsLn "();"
-          _  ->  do
-            tells "( "
-            forMWithSep_ (tells ", ") (zip [1 ..] params) $ \(i, param) -> do
-              tells (param ++ " const& arg" ++ show i ++ "_")
-            tellsLn " );"
-      _ -> return ()
+          tellsLn ("  " ++ param ++ " arg" ++ show i ++ ";")
+        tells ("  explicit " ++ className ++ "( ")
+        forMWithSep_ (tells ", ") (zip [1 ..] params) $ \(i, param) -> do
+          tells (param ++ " const& arg" ++ show i ++ "_")
+        tellsLn " );"
     tellsLn "};"
 
 -------------------------------------------------------------------------------
@@ -253,9 +282,6 @@ tellTransitionPrototypes = do
   syntax <- syntax_
   tellsLn "// transition rules"
   tellNewline
-  tellsLn "template< typename... Stack >"
-  tellsLn "auto end_transition( std::shared_ptr< State< Stack... > > const& src );"
-  tellNewline
   forMWithSep_ tellNewline (syntaxTerminals syntax) $ \t -> do
     case t of
       UserTerminal name params -> do
@@ -266,9 +292,8 @@ tellTransitionPrototypes = do
         tellsLn " );"
       _ -> error ("invalid terminal symbol found -- " ++ show t)
   tellNewline
-  tellNewline
   tellsLn "template< typename... Stack >"
-  tellsLn "auto reduce( std::shared_ptr< State< Stack... > > const& src );"
+  tellsLn "auto end_transition( std::shared_ptr< State< Stack... > > const& src );"
 
 -------------------------------------------------------------------------------
 
@@ -277,7 +302,7 @@ tellBeginPrototype :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv 
 tellBeginPrototype = do
   automaton <- automaton_
   startName <- nodeName_ (lrAutomatonStart automaton)
-  tellsLn ("std::shared_ptr< State< " ++ startName ++ " > > begin();")
+  tellsLn (sharedPtr ("State< " ++ startName ++ " >") ++ " begin();")
 
 -------------------------------------------------------------------------------
 -- generate .cpp
@@ -318,7 +343,7 @@ tellASTMethodImpls = do
     forMWithSep_ (tellNewline >> tellNewline) (syntaxRules syntax nt) $ \rule -> do
       let className = pascalCase (ruleName rule)
       let args = [(typ, "arg" ++ show i) |
-                  (i, typ) <- zip [1 ..] (ruleParams rule)]
+                  (i, typ) <- zip [1 ..] (concat (ruleParams rule))]
       -- constructor
       tells (className ++ "::" ++ className ++ "( ")
       forMWithSep_ (tells ", ") args $ \(argType, argName) -> do
@@ -367,7 +392,7 @@ tellASTPrintImpls = do
   forMWithSep_ tellNewline (syntaxNonTerminals syntax) $ \nt -> do
     forMWithSep_ tellNewline (syntaxRules syntax nt) $ \rule -> do
       let className = pascalCase (ruleName rule)
-      let args = ruleParams rule
+      let args = concat (ruleParams rule)
       tellsLn ("std::ostream& operator <<( std::ostream& out, " ++ className ++ " const& self ) {")
       tells ("  out << \"" ++ className ++ "(\"")
       forMWithSep_ (tells " << \", \"") (zip [0 ..] args) $ \(i, typeName) -> do
@@ -386,20 +411,18 @@ tellAutomatonNodeMethodImpls = do
   nodes <- nodes_
   forMWithSep_ tellNewline nodes $ \(node, nodeName, nodeType) -> do
     let className = pascalCase nodeName
-    let argType = nodeType
-    tells (className ++ "::" ++ className)
-    case argType of
-      NonTerminalSymbol nt -> do
-        tellsLn ("( " ++ nonTerminalName nt ++ " const& content_ ) :content( content_ ) {}")
-      TerminalSymbol (UserTerminal name params) | not (null params) -> do
-        tells "( "
+    params <- nodeParams_ node
+    case params of
+      [] -> tellsLn (className ++ "::" ++ className ++ "() {}")
+      _  -> do
+        tells (className ++ "::" ++ className ++ "( ")
         forMWithSep_ (tells ", ") (zip [1 ..] params) $ \(i, param) -> do
           tells (param ++ " const& arg" ++ show i ++ "_")
-        tells " ) "
+        tellsLn ")"
+        tells "    :"
         forMWithSep_ (tells ", ") (zip [1 ..] params) $ \(i, param) -> do
-          tells (":arg" ++ show i ++ "( arg" ++ show i ++ "_ )")
-        tellsLn "{}"
-      _ -> tellsLn "() {}"
+          tells ("arg" ++ show i ++ "( arg" ++ show i ++ "_ )")
+        tellsLn " {}"
 
 -------------------------------------------------------------------------------
 
@@ -408,7 +431,7 @@ tellBeginImpl :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
 tellBeginImpl = do
   automaton <- automaton_
   startName <- nodeName_ (lrAutomatonStart automaton)
-  tellsLn ("std::shared_ptr< State< " ++ startName ++ " > > begin() {")
+  tellsLn (sharedPtr ("State< " ++ startName ++ " >") ++ " begin() {")
   tellsLn "  std::shared_ptr< State<> > bottom( new State<>() );"
   tellsLn ("  return State< " ++ startName ++ " >::make( " ++ startName ++ "(), bottom );")
   tellsLn "}"
@@ -422,10 +445,12 @@ tellHppImpl :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
 tellHppImpl = do
   tellSeparator
   sequenceWithSep_ tellSeparator $
+    -- [tellParsingStateMethodImpls,
+    --  tellTransitionDefaultImpls,
+    --  tellShiftTransitions,
+    --  tellReduceImpls]
     [tellParsingStateMethodImpls,
-     tellTransitionDefaultImpls,
-     tellShiftTransitions,
-     tellReduceImpls]
+     tellTransitions]
   tellSeparator
 
 -------------------------------------------------------------------------------
@@ -448,7 +473,7 @@ tellParsingStateMethodImpls = do
   tellNewline
   tellsLn "template< typename Head, typename... Tail >"
   tellsLn "auto State< Head, Tail... >::end() {"
-  tellsLn "  return end_transition( this_ );"
+  tellsLn "  return end_transition( this_.lock() );"
   tellsLn "}"
   tellNewline
   forMWithSep_ tellNewline (syntaxTerminals syntax) $ \terminal -> do
@@ -456,15 +481,15 @@ tellParsingStateMethodImpls = do
       UserTerminal methodName [] -> do
         tellsLn "template< typename Head, typename... Tail >"
         tellsLn ("auto State< Head, Tail... >::" ++ methodName ++ "() {")
-        tellsLn ("  return " ++ methodName ++ "_transition( this_ );")
+        tellsLn ("  return " ++ methodName ++ "_transition( this_.lock() );")
         tellsLn "}"
       UserTerminal methodName methodParams -> do
         tellsLn "template< typename Head, typename... Tail >"
         tells ("auto State< Head, Tail... >::" ++ methodName ++ "( ")
         forMWithSep_ (tells ", ") (zip [1 ..] methodParams) $ \(i, param) -> do
-          tells (param ++ " arg" ++ show i)
+          tells (param ++ " const& arg" ++ show i)
         tellsLn " ) {"
-        tells ("  return " ++ methodName ++ "_transition( this_")
+        tells ("  return " ++ methodName ++ "_transition( this_.lock()")
         forM_ (zip [1 ..] methodParams) $ \(i, _) -> do
           tells ( ", arg" ++ show i)
         tellsLn " );"
@@ -473,118 +498,75 @@ tellParsingStateMethodImpls = do
 
 -------------------------------------------------------------------------------
 
-tellTransitionDefaultImpls :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
-                           => m ()
-tellTransitionDefaultImpls = do
-  syntax <- syntax_
-  tellsLn "template< typename... Stack >"
-  tellsLn "auto end_transition( std::shared_ptr< State< Stack... > > const& src ) {"
-  tellsLn "  return reduce( src )->end();"
-  tellsLn "}"
-  tellNewline
-  forMWithSep_ tellNewline (syntaxTerminals syntax) $ \terminal -> do
-    case terminal of
-      UserTerminal methodName [] -> do
-        tellsLn "template< typename... Stack >"
-        tellsLn ("auto " ++ methodName ++ "_transition( std::shared_ptr< State< Stack... > > const& src ) {")
-        tellsLn ("  return reduce( src )->" ++ methodName ++ "();")
-        tellsLn "}"
-      UserTerminal methodName methodParams -> do
-        tellsLn "template< typename... Stack >"
-        tells ("auto " ++ methodName ++ "_transition( std::shared_ptr< State< Stack... > > const& src")
-        forM_ (zip [1 ..] methodParams) $ \(i, param) -> do
-          tells (", " ++ param ++ " const& arg" ++ show i)
-        tellsLn " ) {"
-        tells ("  return reduce( src )->" ++ methodName ++ "( ")
-        forMWithSep_ (tells ", ") (zip [1 ..] methodParams) $ \(i, _) -> do
-          tells ("arg" ++ show i)
-        tellsLn " );"
-        tellsLn "}"
-
--------------------------------------------------------------------------------
-
-tellShiftTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
-                     => m ()
-tellShiftTransitions = do
-  automaton <- automaton_
-  nodes     <- nodes_
-  tellsLn "// shift transitions"
-  tellNewline
-  -- acceptible states
-  let acceptibleNodes = filter acceptible (map (\(node, _, _) -> node) nodes)
-  forMWithSep_ tellNewline acceptibleNodes $ \node -> do
-    NodeInfo name (NonTerminalSymbol nt) <- nodeInfo_ node
-    tellsLn "template< typename Prev >"
-    tellsLn ("inline auto end_transition( std::shared_ptr< State< " ++ name ++ ", Prev > > const& src ) {")
-    tellsLn "  return src->head.content;"
-    tellsLn "}"
-  tellNewline
-
-  let shiftEdges = groupBy (equaling fst) (shifts automaton)
-  forMWithSep_ (tellNewline >> tellNewline) shiftEdges $ \edges -> do
-    forMWithSep_ tellNewline edges $ \(terminal, (src, dst)) -> do
-      (srcName, dstName) <- (,) <$> nodeName_ src <*> nodeName_ dst
-      case terminal of
-        UserTerminal methodName [] -> do
-          tellsLn "template< typename... Tail >"
-          tellsLn ("auto " ++ methodName ++ "_transition( std::shared_ptr< State< " ++ srcName ++ ", Tail... > > const& src ) {")
-          tellsLn ("  return State< " ++ dstName ++ ", " ++ srcName ++ ", Tail... >::make( " ++ dstName ++ "(), src );")
-          tellsLn "}"
-        UserTerminal methodName methodParams -> do
-          tellsLn "template< typename... Tail >"
-          tells ("auto " ++ methodName ++ "_transition( std::shared_ptr< State< " ++ srcName ++ ", Tail... > > const& src")
-          forM_ (zip [1 ..] methodParams) $ \(i, param) -> do
-            tells (", " ++ param ++ " const& arg" ++ show i)
-          tellsLn " ) {"
-          tells ("  return State< " ++ dstName ++ ", " ++ srcName ++ ", Tail... >::make( " ++ dstName ++ "( ")
-          forMWithSep_ (tells ", ") (zip [1 ..] methodParams) $ \(i, _) -> do
-            tells ("arg" ++ show i)
-          tellsLn " ), src );"
-          tellsLn "}"
-
--------------------------------------------------------------------------------
-
-tellReduceImpls :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+tellTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                 => m ()
-tellReduceImpls = do
-  syntax <- syntax_
-  automaton <- automaton_
-  nodes <- nodes_
-  tellsLn "// reduces"
+tellTransitions = do
+  table <- lrTable_
+  tellsLn "// transitions"
   tellNewline
-  forM_ (syntaxNonTerminals syntax) $ \nt -> do
-    forM_ (syntaxRules syntax nt) $ \rule -> do
-      tells "// " >> tellRule rule >> tellNewline
-      forM_ (reduces automaton rule) $ \(src, [base, dst]) -> do
-        tellsLn "template< typename... Tail >"
-        tells "auto reduce( std::shared_ptr< State< "
-        forMWithSep_ (tells ", ") (reverse src) $ \node -> do
-          name <- nodeName_ node
-          tells name
-        tellsLn ", Tail... > > const& src ) {"
-        let fresh = modify (+ 1) >> get
-        argsCount <- (`execStateT` 0) $ do
-          forM_ (zip [0 ..] (tail src)) $ \(i, node) -> do
-            typ <- nodeType_ node
-            let params = case typ of
-                  NonTerminalSymbol nt -> [nonTerminalName nt]
-                  TerminalSymbol (UserTerminal _ params) -> params
-                  TerminalSymbol EndOfInput              -> []
-            forM_ (zip [1 ..] params) $ \(j, param) -> do
-              k <- fresh
-              tells ("  " ++ param ++ " const& arg" ++ show k ++ " = src")
-              replicateM_ i (tells "->tail")
-              tellsLn ("->head.arg" ++ show j ++ ";")
-        tells ("  " ++ nonTerminalName nt ++ " content( new " ++ pascalCase (ruleName rule) ++ "( ")
-        forMWithSep_ (tells ", ") [1 .. argsCount] $ \i -> do
-          tells ("arg" ++ show i)
-        tellsLn " ) );"
-        dstName <- nodeName_ dst
-        baseName <- nodeName_ base
-        tells ("  std::shared_ptr< State< " ++ baseName ++ ", Tail... > > const& tail = src")
-        replicateM_ (length src - 1) (tells "->tail")
-        tellsLn ";"
-        tellsLn ("  return State< " ++ dstName ++ ", " ++ baseName ++ ", Tail... >::make( " ++ dstName ++ "( content ), tail );")
-        tellsLn "}"
+  forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> do
+    case action of
+      Shift  dst  -> tellShiftTransition  src t dst
+      Reduce rule -> tellReduceTransition src t rule
+      Accept      -> tellAcceptTransition src
+
+
+tellShiftTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                    => LRNode -> Terminal -> LRNode -> m ()
+tellShiftTransition src t dst = do
+  srcName <- pascalCase <$> nodeName_ src
+  dstName <- pascalCase <$> nodeName_ dst
+  let funName = terminalName t ++ "_transition"
+  let srcType = "State< " ++ srcName ++ ", Tail... >"
+  let dstType = "State< " ++ dstName ++ ", " ++ srcName ++ ", Tail... >"
+  let params = terminalParams t
+  let paramList = sharedPtr srcType ++ " const& src" ++ concat [", " ++ typ ++ " const& arg" ++ show i | (i, typ) <- zip [1 ..] params]
+  let dstArgs = intercalate ", " ["arg" ++ show i | (i, _) <- zip [1 ..] params]
+  tellsLn "template< typename... Tail >"
+  tellsLn ("auto " ++ funName ++ "( " ++ paramList ++ " ) {")
+  tellsLn ("  return " ++ dstType ++ "::make( " ++ dstName ++ "( " ++ dstArgs ++ " ), src );")
+  tellsLn "}"
+
+tellReduceTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                     => LRNode -> Terminal -> Rule -> m ()
+tellReduceTransition src t rule = do
+  reduces <- reducesFrom_ src rule
+  forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
+    srcType <- do path <- mapM nodeName_ srcPath
+                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >") 
+    dstType <- do path <- mapM nodeName_ dstPath
+                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
+    baseType <- do baseName <- nodeName_ (last dstPath)
+                   return ("State< " ++ baseName ++ ", Tail... >")
+    let funName = terminalName t ++ "_transition"
+    let params = terminalParams t
+    let paramList = sharedPtr srcType ++ " const& src" ++ concat [", " ++ typ ++ " const& arg" ++ show i | (i, typ) <- zip [1 ..] params]
+    dstName <- pascalCase <$> nodeName_ (head dstPath)
+    let contentType = sharedPtr (nonTerminalName (ruleLhs rule))
+    tellsLn "template< typename... Tail >"
+    tellsLn ("auto " ++ funName ++ "( " ++ paramList ++ " ) {")
+    n <- (`execStateT` 0) $ forM_ (zip [1 ..] (ruleRhs rule)) $ \(i, sym) -> case sym of
+      NonTerminalSymbol nt -> do
+        j <- modify (+ 1) >> get
+        tellsLn ("  " ++ sharedPtr (nonTerminalName nt) ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg1;")
+      TerminalSymbol t -> do
+        forM_ (zip [1 ..] (terminalParams t)) $ \(k, param) -> do
+          j <- modify (+ 1) >> get
+          tellsLn ("  " ++ param ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg" ++ show k ++ ";")
+    tellsLn ("  " ++ contentType ++ " const& content = " ++ contentType ++ "( new " ++ ruleName rule ++ "( " ++ intercalate ", " ["x" ++ show i | i <- [1 .. n]] ++ " ) );")
+    tellsLn ("  " ++ sharedPtr baseType ++ " const& tail = src" ++ concat ["->tail" | _ <- tail srcPath] ++ ";")
+    tellsLn ("  return " ++ funName ++ "( " ++ dstType ++ "::make( " ++ dstName ++ "( content ), tail )" ++ concat [", arg" ++ show i | (i, _) <- zip [1 ..] params] ++ " );")
+    tellsLn "}"
+
+tellAcceptTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                     => LRNode -> m ()
+tellAcceptTransition src = do
+  srcName <- nodeName_ src
+  let srcType = "State< " ++ srcName ++ ", Tail... >"
+  [resultType] <- nodeParams_ src
+  tellsLn "template< typename... Tail >"
+  tellsLn ("auto end_transition( std::shared_ptr< " ++ srcType ++ " > const& src ) {")
+  tellsLn "  return src->head.arg1;"
+  tellsLn "}"
 
 -------------------------------------------------------------------------------

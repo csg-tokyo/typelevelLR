@@ -2,16 +2,16 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Utility (module Utility) where
+module Utility (module Utility, module SwitchCase) where
 
 import Control.Monad         (forM, forM_)
 import Control.Monad.Writer  (MonadWriter(tell), Writer, execWriter)
 import Control.Monad.State   (get, put, evalStateT)
 import Control.Monad.Trans   (lift)
 import Data.Monoid           (Endo(Endo, appEndo))
-import Data.List             (intercalate, tails)
-import Data.Char             (toUpper, toLower, isAlpha)
-import Text.Parsec
+import Data.List             (tails)
+
+import SwitchCase
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -31,12 +31,6 @@ x |> f = f x
 
 allPairs :: [a] -> [(a, a)]
 allPairs xs = [(x1, x2) | x1:xs' <- tails xs, x2 <- xs']
-
-fromLeft :: Either a b -> a
-fromLeft = either id (error "fromLeft")
-
-fromRight :: Either a b -> b
-fromRight = either (error "fromRight") id
 
 -------------------------------------------------------------------------------
 
@@ -104,36 +98,6 @@ sequenceWithSep sep = mapMWithSep sep id
 
 sequenceWithSep_ :: (Monad m, Foldable t) => m sep -> t (m a) -> m ()
 sequenceWithSep_ sep = mapMWithSep_ sep id
-
--------------------------------------------------------------------------------
-
-splitIdentifier :: String -> [String]
-splitIdentifier = fromRight . parse (sepBy word sep) "splitIdentifier"
-  where word  =  (:) <$> lower <*> many (lower <|> digit)
-             <|> try ((:) <$> (toLower <$> upper) <*> many1 (lower <|> digit))
-             <|> (:) <$> upper <*> many (try (upper <* notFollowedBy lower) <|> digit)
-             <|> many1 (satisfy (\c -> not (isAlpha c) && c /= '-' && c /= '_'))
-        sep  =  () <$ many1 (string "-")
-            <|> () <$ many1 (string "_")
-            <|> return ()
-
-camelCase :: String -> String
-camelCase identifier = case splitIdentifier identifier of
-  []           -> []
-  first : rest -> map toLower first ++ (rest >>= camelWord)
-
-pascalCase :: String -> String
-pascalCase identifier = splitIdentifier identifier >>= camelWord
-
-camelWord :: String -> String
-camelWord []     = []
-camelWord (c:cs) = toUpper c : cs
-
-snakeCase :: String -> String
-snakeCase = intercalate "_" . splitIdentifier
-
-allCaps :: String -> String
-allCaps = intercalate "_" . map (map toUpper) . splitIdentifier
 
 -------------------------------------------------------------------------------
 

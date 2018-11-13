@@ -1,0 +1,9 @@
+
+syntax Expr (E) {
+  Add   : E -> E "add" T
+  TToE  : E -> T
+  Mul   : T -> T "mul" F
+  FToT  : T -> F
+  Num   : F -> "num(Integer)"
+  Paren : F -> "lp" E "rp"
+}

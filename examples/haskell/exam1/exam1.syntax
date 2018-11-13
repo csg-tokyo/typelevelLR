@@ -1,0 +1,19 @@
+
+syntax exam1 (Graph) {
+  Directed      : Graph     -> "digraph(String)" Stmts
+  Undirected    : Graph     -> "graph(String)" Stmts
+  StmtsCons     : Stmts     -> Stmt Stmts
+  StmtsNull     : Stmts     -> eps
+  NodeStmt      : Stmt      -> "node(String)" Ands NodeAttrs
+  AndsCons      : Ands      -> "and_(String)" Ands
+  AndsNull      : Ands      -> eps
+  EdgeStmt      : Stmt      -> "edge(String)" Ands "to(String)" Ands EdgeAttrs
+  NodeAttrsCons : NodeAttrs -> NodeAttr NodeAttrs
+  NodeAttrsNull : NodeAttrs -> eps
+  EdgeAttrsCons : EdgeAttrs -> EdgeAttr EdgeAttrs
+  EdgeAttrsNull : EdgeAttrs -> eps
+  NodeAttrColor : NodeAttr  -> "color(String)"
+  NodeAttrShape : NodeAttr  -> "shape(String)"
+  EdgeAttrColor : EdgeAttr  -> "color(String)"
+  EdgeAttrStyle : EdgeAttr  -> "style(String)"
+}
