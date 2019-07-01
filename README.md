@@ -65,6 +65,6 @@
         > runghc MyApp.hs
         Hello, ymzk.
 
-### Detail of Syntax File
+### Details of Syntax Files
 
-Under constructing
+Will be written.
