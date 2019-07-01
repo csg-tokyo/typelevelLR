@@ -1,7 +1,7 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 
-module SwitchCase (fromRight, fromLeft, camelCase, pascalCase, snakeCase, allCaps) where
+module SwitchCase (fromRight, fromLeft, camelCase, pascalCase, snakeCase, allCaps, splitIdentifier) where
 
 import Text.Parsec hiding (digit, lower, upper, many, many1)
 import Data.Char

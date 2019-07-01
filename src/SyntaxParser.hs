@@ -7,6 +7,7 @@ import Syntax
 import Text.Parsec
 
 import Data.Char  (isSpace)
+import Data.List  (isPrefixOf)
 
 -------------------------------------------------------------------------------
 
@@ -23,6 +24,15 @@ trySepBy :: (Stream s m c) => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s 
 trySepBy a sep = (:) <$> a <*> many (try (sep *> a))
 
 -------------------------------------------------------------------------------
+
+eliminateComment :: String -> String
+eliminateComment = unlines . go 0 . lines
+  where go _ []       = []
+        go d (x : xs) | "#{" `isPrefixOf` x = go (d + 1) xs
+                      | "#}" `isPrefixOf` x = go (d - 1) xs
+                      | d > 0              = go d xs
+                      | "##" `isPrefixOf` x = go d xs
+                      | otherwise           = x : go d xs
 
 parseSyntax :: (Stream s m Char) => ParsecT s u m Syntax
 parseSyntax = do

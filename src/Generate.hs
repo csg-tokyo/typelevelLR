@@ -3,7 +3,7 @@ module Generate where
 
 import Utility       (pascalCase)
 import Syntax        (Syntax(syntaxName))
-import SyntaxParser  (parseSyntax, parse)
+import SyntaxParser  (parseSyntax, parse, eliminateComment)
 import LALRAutomaton (lalrAutomaton)
 import CodeGenerateEnv
 
@@ -26,7 +26,7 @@ generate = (`appEndo` "") . execWriter
 generateHaskell :: FilePath -> FilePath -> IO ()
 generateHaskell src dst = do
   syntaxSource <- readFile src
-  let syntax = case parse parseSyntax src syntaxSource of
+  let syntax = case parse parseSyntax src (eliminateComment syntaxSource) of
         Left  err -> error (show err)
         Right s   -> s
 
@@ -41,7 +41,7 @@ generateHaskell src dst = do
 generateCpp :: FilePath -> FilePath -> IO ()
 generateCpp src dst = do
   syntaxSource <- readFile src
-  let syntax = case parse parseSyntax src syntaxSource of
+  let syntax = case parse parseSyntax src (eliminateComment syntaxSource) of
         Left  err -> error (show err)
         Right s   -> s
   let automaton = lalrAutomaton syntax
@@ -64,7 +64,7 @@ generateCpp src dst = do
 generateScala :: FilePath -> FilePath -> IO ()
 generateScala src dst = do
   syntaxSource <- readFile src
-  let syntax = case parse parseSyntax src syntaxSource of
+  let syntax = case parse parseSyntax src (eliminateComment syntaxSource) of
         Left  err -> error (show err)
         Right s   -> s
   let automaton = lalrAutomaton syntax
