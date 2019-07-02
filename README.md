@@ -10,8 +10,8 @@
 
 ### How to Install
 
-    	> git clone https://github.com/ymzk/typelevelLR
-	> cd typelevelLR
+        > git clone https://github.com/ymzk/typelevelLR
+        > cd typelevelLR
         > stack install
 
 ### Usage:
@@ -22,7 +22,7 @@
         syntax helloDSL (Start) {
             simpleHello   : Start -> "hello"
             helloWithName : Start -> "hello" Name
-            nameString    : Name  -> "str(String)"
+            nameString    : Name  -> "name(String)"
         }
 
 2. Generate Fluent DSL Library
@@ -35,7 +35,7 @@
         import HelloDSL
 
         main :: IO ()
-        main = print $ begin hello str "ymzk" end
+        main = print $ begin |> hello |> name "ymzk" |> end
 
         > runghc MyApp.hs
         HelloWithName (NameString "ymzk")
@@ -48,8 +48,8 @@
         import HelloDSL
 
         runHelloDSL :: Start -> IO ()
-        runHelloDSL SimpleHello name) = putStrLn "Hello!!"
-        runHelloDSL (HelloWithName (NameString name)) = putStrLn ("Hello, " ++ name ++ ".")
+        runHelloDSL (SimpleHello name) = putStrLn "Hello."
+        runHelloDSL (HelloWithName (NameString name)) = putStrLn ("Hello, " ++ name ++ "!!")
 
 5. Run it
 
@@ -63,7 +63,7 @@
         main = runHelloDSL $ begin hello str "ymzk" end
 
         > runghc MyApp.hs
-        Hello, ymzk.
+        Hello, ymzk!!
 
 ### Details of Syntax Files
 
