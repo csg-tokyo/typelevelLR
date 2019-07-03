@@ -10,7 +10,7 @@
 
 ### How to Install
 
-        > git clone https://github.com/ymzk/typelevelLR
+        > git clone https://github.com/csg-tokyo/typelevelLR
         > cd typelevelLR
         > stack install
 
@@ -60,7 +60,7 @@
         import HelloDSLSemantics
 
         main :: IO ()
-        main = runHelloDSL $ begin hello str "ymzk" end
+        main = runHelloDSL $ begin |> hello |> name "ymzk" |> end
 
         > runghc MyApp.hs
         Hello, ymzk!!
