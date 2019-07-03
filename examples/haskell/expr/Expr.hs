@@ -19,10 +19,9 @@ module Expr where
 
 -------------------------------------------------------------------------------
 
-type Program r a = (a -> r) -> r
-
-program :: a -> Program r a
-program a = \k -> k a
+infixl 1 |>
+(|>) :: a -> (a -> b) -> b
+x |> f = f x
 
 -------------------------------------------------------------------------------
 
@@ -48,19 +47,19 @@ data T
 -- terminal symbols
 
 class AddTransition s t | s -> t where
-  add :: s -> Program r t
+  add :: s -> t
 
 class NumTransition s t | s -> t where
-  num :: s -> Integer -> Program r t
+  num :: Integer -> s -> t
 
 class LpTransition s t | s -> t where
-  lp :: s -> Program r t
+  lp :: s -> t
 
 class RpTransition s t | s -> t where
-  rp :: s -> Program r t
+  rp :: s -> t
 
 class MulTransition s t | s -> t where
-  mul :: s -> Program r t
+  mul :: s -> t
 
 class EndTransition s t | s -> t where
   end :: s -> t
@@ -98,16 +97,16 @@ data Node12 prev = Node12 prev
 -- transition instances
 
 instance AddTransition (Node2 prev) (Node5 (Node2 prev)) where
-  add src = program (Node5 src)
+  add src = Node5 src
 
 instance EndTransition (Node2 prev) E where
   end (Node2 _ arg1) = arg1
 
 instance LpTransition (Node1 prev) (Node4 (Node1 prev)) where
-  lp src = program (Node4 src)
+  lp src = Node4 src
 
 instance NumTransition (Node1 prev) (Node11 (Node1 prev)) where
-  num src arg1 = program (Node11 src arg1)
+  num arg1 src = Node11 src arg1
 
 instance (AddTransition (Node2 (Node1 prev)) t) => AddTransition (Node3 (Node5 (Node2 (Node1 prev)))) t where
   add (Node3 (Node5 (Node2 prev arg1)) arg2) = add (Node2 prev (Add arg1 arg2))
@@ -116,7 +115,7 @@ instance (AddTransition (Node6 (Node4 prev)) t) => AddTransition (Node3 (Node5 (
   add (Node3 (Node5 (Node6 prev arg1)) arg2) = add (Node6 prev (Add arg1 arg2))
 
 instance MulTransition (Node3 prev) (Node9 (Node3 prev)) where
-  mul src = program (Node9 src)
+  mul src = Node9 src
 
 instance (RpTransition (Node2 (Node1 prev)) t) => RpTransition (Node3 (Node5 (Node2 (Node1 prev)))) t where
   rp (Node3 (Node5 (Node2 prev arg1)) arg2) = rp (Node2 prev (Add arg1 arg2))
@@ -131,22 +130,22 @@ instance (EndTransition (Node6 (Node4 prev)) t) => EndTransition (Node3 (Node5 (
   end (Node3 (Node5 (Node6 prev arg1)) arg2) = end (Node6 prev (Add arg1 arg2))
 
 instance LpTransition (Node4 prev) (Node4 (Node4 prev)) where
-  lp src = program (Node4 src)
+  lp src = Node4 src
 
 instance NumTransition (Node4 prev) (Node11 (Node4 prev)) where
-  num src arg1 = program (Node11 src arg1)
+  num arg1 src = Node11 src arg1
 
 instance LpTransition (Node5 prev) (Node4 (Node5 prev)) where
-  lp src = program (Node4 src)
+  lp src = Node4 src
 
 instance NumTransition (Node5 prev) (Node11 (Node5 prev)) where
-  num src arg1 = program (Node11 src arg1)
+  num arg1 src = Node11 src arg1
 
 instance AddTransition (Node6 prev) (Node5 (Node6 prev)) where
-  add src = program (Node5 src)
+  add src = Node5 src
 
 instance RpTransition (Node6 prev) (Node12 (Node6 prev)) where
-  rp src = program (Node12 src)
+  rp src = Node12 src
 
 instance (AddTransition (Node10 (Node1 prev)) t) => AddTransition (Node7 (Node1 prev)) t where
   add (Node7 prev arg1) = add (Node10 prev (FToT arg1))
@@ -221,10 +220,10 @@ instance (EndTransition (Node3 (Node5 prev)) t) => EndTransition (Node8 (Node9 (
   end (Node8 (Node9 (Node3 prev arg1)) arg2) = end (Node3 prev (Mul arg1 arg2))
 
 instance LpTransition (Node9 prev) (Node4 (Node9 prev)) where
-  lp src = program (Node4 src)
+  lp src = Node4 src
 
 instance NumTransition (Node9 prev) (Node11 (Node9 prev)) where
-  num src arg1 = program (Node11 src arg1)
+  num arg1 src = Node11 src arg1
 
 instance (AddTransition (Node2 (Node1 prev)) t) => AddTransition (Node10 (Node1 prev)) t where
   add (Node10 prev arg1) = add (Node2 prev (TToE arg1))
@@ -233,7 +232,7 @@ instance (AddTransition (Node6 (Node4 prev)) t) => AddTransition (Node10 (Node4 
   add (Node10 prev arg1) = add (Node6 prev (TToE arg1))
 
 instance MulTransition (Node10 prev) (Node9 (Node10 prev)) where
-  mul src = program (Node9 src)
+  mul src = Node9 src
 
 instance (RpTransition (Node2 (Node1 prev)) t) => RpTransition (Node10 (Node1 prev)) t where
   rp (Node10 prev arg1) = rp (Node2 prev (TToE arg1))
@@ -345,8 +344,8 @@ instance (EndTransition (Node8 (Node9 prev)) t) => EndTransition (Node12 (Node6 
 
 -------------------------------------------------------------------------------
 
-begin :: Program r (Node1 ())
-begin = program (Node1 ())
+begin :: Node1 ()
+begin = Node1 ()
 
 -------------------------------------------------------------------------------
 

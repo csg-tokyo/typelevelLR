@@ -8,4 +8,4 @@ printOops oops = goOops oops >> putStrLn ""
         goOs   EndOs      = return ()
 
 main :: IO ()
-main = printOops $ begin o o ps end
+main = printOops $ begin |> o |> o |> ps |> end

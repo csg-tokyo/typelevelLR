@@ -16,10 +16,9 @@ module OopsDSL where
 
 -------------------------------------------------------------------------------
 
-type Program r a = (a -> r) -> r
-
-program :: a -> Program r a
-program a = \k -> k a
+infixl 1 |>
+(|>) :: a -> (a -> b) -> b
+x |> f = f x
 
 -------------------------------------------------------------------------------
 
@@ -39,10 +38,10 @@ data Os
 -- terminal symbols
 
 class PsTransition s t | s -> t where
-  ps :: s -> Program r t
+  ps :: s -> t
 
 class OTransition s t | s -> t where
-  o :: s -> Program r t
+  o :: s -> t
 
 class EndTransition s t | s -> t where
   end :: s -> t
@@ -71,7 +70,7 @@ instance EndTransition (Node2 prev) Oops where
   end (Node2 _ arg1) = arg1
 
 instance OTransition (Node1 prev) (Node4 (Node1 prev)) where
-  o src = program (Node4 src)
+  o src = Node4 src
 
 instance (PsTransition (Node6 (Node1 prev)) t) => PsTransition (Node1 prev) t where
   ps prev = ps (Node6 prev (EndOs))
@@ -83,7 +82,7 @@ instance (PsTransition (Node3 (Node4 prev)) t) => PsTransition (Node3 (Node4 (No
   ps (Node3 (Node4 prev) arg1) = ps (Node3 prev (AddO arg1))
 
 instance OTransition (Node4 prev) (Node4 (Node4 prev)) where
-  o src = program (Node4 src)
+  o src = Node4 src
 
 instance (PsTransition (Node3 (Node4 prev)) t) => PsTransition (Node4 prev) t where
   ps prev = ps (Node3 prev (EndOs))
@@ -92,12 +91,12 @@ instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node5 (Node6 (
   end (Node5 (Node6 prev arg1)) = end (Node2 prev (AddPs arg1))
 
 instance PsTransition (Node6 prev) (Node5 (Node6 prev)) where
-  ps src = program (Node5 src)
+  ps src = Node5 src
 
 -------------------------------------------------------------------------------
 
-begin :: Program r (Node1 ())
-begin = program (Node1 ())
+begin :: Node1 ()
+begin = Node1 ()
 
 -------------------------------------------------------------------------------
 

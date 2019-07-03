@@ -2,4 +2,4 @@
 import OopsDSL
 
 main :: IO ()
-main = print $ begin end
+main = print $ begin |> end

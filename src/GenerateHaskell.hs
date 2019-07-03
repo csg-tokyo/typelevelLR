@@ -158,7 +158,7 @@ tellShiftTransition src t dst = do
   let dstType = "(" ++ dstName ++ " (" ++ srcName ++ " prev))"
   let params = concat [" arg" ++ show i | (i, _) <- zip [1 ..] (terminalParams t)]
   tellsLn ("instance " ++ className ++ " " ++ srcType ++ " " ++ dstType ++ " where")
-  tellsLn ("  " ++ terminalName t ++ params ++ " src = " ++ dstName ++ " src" ++ params)
+  tellsLn ("  " ++ camelCase (terminalName t) ++ params ++ " src = " ++ dstName ++ " src" ++ params)
 
 tellReduceTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> Terminal -> Rule -> m ()

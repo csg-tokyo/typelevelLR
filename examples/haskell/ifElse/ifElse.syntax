@@ -1,0 +1,10 @@
+
+syntax ifElse (S) {
+  S1         : S    -> "a" Expr "a"
+  S2         : S    -> "b" Expr "b"
+  Return     : Expr -> "return_(String)"
+  IfThen     : Expr -> "if_(Bool)" Then
+  IfThenElse : Expr -> "if_(Bool)" Then Else
+  ThenClause : Then -> "then_" Expr
+  ElseClause : Else -> "else_" Expr
+}
