@@ -1,5 +1,5 @@
 
-syntax exam1 (Graph) {
+syntax DotLanguage (Graph) {
   Directed      : Graph     -> "digraph(String)" Stmts
   Undirected    : Graph     -> "graph(String)" Stmts
   StmtsCons     : Stmts     -> Stmt Stmts

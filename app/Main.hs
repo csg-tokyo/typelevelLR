@@ -20,7 +20,7 @@ main_ :: Flag "" '["hs"]  "" "generate Haskell library" Bool ->
          Flag "" '["scala"] "" "generate Scala library" Bool ->
          Flag "d" '["dest"] "PATH" "destination directory path" (Maybe FilePath) ->
          Flag "s" '["source"] "PATH" "FILENAME" (Def "." FilePath) ->
-         Cmd "Generate Fluent API Library from LR Grammar" ()
+         Cmd "Generate a Fluent API library skeleton from an LR Grammar" ()
 main_ genHs_ genCpp_ genScala_ dest_ source_ = liftIO $ do
   let genHs    = if get genHs_    then [generateHaskell] else []
   let genCpp   = if get genCpp_   then [generateCpp    ] else []

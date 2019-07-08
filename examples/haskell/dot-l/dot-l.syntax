@@ -2,15 +2,15 @@
 syntax DotLanguage (Graph) {
   Directed      : Graph     -> "digraph(String)" Stmts
   Undirected    : Graph     -> "graph(String)" Stmts
-  StmtsCons     : Stmts     -> Stmt Stmts
+  StmtsCons     : Stmts     -> Stmts Stmt
   StmtsNull     : Stmts     -> eps
   NodeStmt      : Stmt      -> "node(String)" Ands NodeAttrs
-  AndsCons      : Ands      -> "and_(String)" Ands
+  AndsCons      : Ands      -> Ands "and_(String)"
   AndsNull      : Ands      -> eps
   EdgeStmt      : Stmt      -> "edge(String)" Ands "to(String)" Ands EdgeAttrs
-  NodeAttrsCons : NodeAttrs -> NodeAttr NodeAttrs
+  NodeAttrsCons : NodeAttrs -> NodeAttrs NodeAttr
   NodeAttrsNull : NodeAttrs -> eps
-  EdgeAttrsCons : EdgeAttrs -> EdgeAttr EdgeAttrs
+  EdgeAttrsCons : EdgeAttrs -> EdgeAttrs EdgeAttr
   EdgeAttrsNull : EdgeAttrs -> eps
   NodeAttrColor : NodeAttr  -> "color(String)"
   NodeAttrShape : NodeAttr  -> "shape(String)"
