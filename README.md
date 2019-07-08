@@ -10,10 +10,21 @@
 
 ### How to Install
 
+Clone this repository and type stack install.
+
 ```sh
 > git clone https://github.com/csg-tokyo/typelevelLR
 > cd typelevelLR
 > stack install
+```
+
+You can also use Docker:
+
+```sh
+> git clone https://github.com/csg-tokyo/typelevelLR
+> cd typelevelLR
+> docker build -t csg-tokyo/typelevellr:latest
+> docker run -v $(pwd):/workdir -it csg-tokyo/typelevellr:latest
 ```
 
 ### Usage:
