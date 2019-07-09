@@ -1,0 +1,1 @@
+TToE (Mul (FToT (Paren (Add (TToE (FToT (Num 1))) (FToT (Num 2))))) (Num 3))

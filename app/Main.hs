@@ -15,11 +15,11 @@ import Data.List               (isSuffixOf)
 
 -------------------------------------------------------------------------------
 
-main_ :: Flag "" '["hs"]  "" "generate Haskell library" Bool ->
+main_ :: Flag "" '["hs", "haskell"]  "" "generate Haskell library" Bool ->
          Flag "" '["cpp"] "" "generate C++ library"     Bool ->
          Flag "" '["scala"] "" "generate Scala library" Bool ->
          Flag "d" '["dest"] "PATH" "destination directory path" (Maybe FilePath) ->
-         Flag "s" '["source"] "PATH" "FILENAME" (Def "." FilePath) ->
+         Flag "s" '["source"] "PATH" "source directory path" (Def "." FilePath) ->
          Cmd "Generate a Fluent API library skeleton from an LR Grammar" ()
 main_ genHs_ genCpp_ genScala_ dest_ source_ = liftIO $ do
   let genHs    = if get genHs_    then [generateHaskell] else []
