@@ -1,6 +1,5 @@
 
 syntax helloDSL (Start) {
     SimpleHello   : Start -> "hello"
-    HelloWithName : Start -> "hello" Name
-    NameString    : Name  -> "name(String)"
+    HelloWithName : Start -> "hello" "name(String)"
 }
