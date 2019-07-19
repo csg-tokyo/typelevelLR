@@ -45,7 +45,7 @@ syntax helloDSL (Start) {
 2. Generate Fluent DSL Library
 
 ```sh
-> typelevelLR --hs hello.syntax
+> typelevelLR --haskell
 ```
 
 3. Import Fluent DSL Library
