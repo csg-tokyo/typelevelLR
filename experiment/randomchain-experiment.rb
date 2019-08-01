@@ -4,8 +4,8 @@
 ## configuration
 
 $verbouse = false
-$num_warmup = 5
-$num_measure = 20
+$num_warmup = 3
+$num_measure = 10
 
 ###############################################################################
 
@@ -108,7 +108,7 @@ class RandomChainExperiment < Experiment
   end
 
   def default_ns
-    (1 .. 300)
+    (1 .. 200)
   end
 
   def default_ms
@@ -185,7 +185,7 @@ class HaskellRandomChainExperiment < RandomChainExperiment
   end
 
   def compile(filename)
-    runshell("ghc -O2 -Wno-simplifiable-class-constraints -fcontext-stack=2000 #{ filename }")
+    runshell("ghc -O2 -fcontext-stack=2000 #{ filename }")
   end
 
   def cleanup(setting)
@@ -202,7 +202,8 @@ end
 
 ###############################################################################
 
-results = HaskellRandomChainExperiment.new(1 .. 5, [1]).invoke
+$verbouse = true
+results = HaskellRandomChainExperiment.new(nil, nil).invoke
 
 results.each do |setting, ts|
   puts "#{ setting[:n] }, #{ setting[:m] }, #{ mean(ts) }, #{ variance(ts) }"

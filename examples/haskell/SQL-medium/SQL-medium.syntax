@@ -23,7 +23,7 @@ syntax SQL (Query) {
 
 ## As ::= "as"?
     AsEps : As <- eps
-    AsAs  : As <- "as"
+    AsAs  : As <- "as_"
 
 ## FromClause ::= "from" TableExpression ( "(" ColumnDefs ")" )?
     From               : FromClause <- "from" TableExpression
@@ -97,7 +97,7 @@ syntax SQL (Query) {
 ## Nulls ::= ("nulls" ("first" | "last"))?
     NullsEps   : Nulls -> eps
     NullsFirst : Nulls -> "nulls" "first"
-    NullsLast  : Nulls -> "nulls" "last"
+    NullsLast  : Nulls -> "nulls" "last_"
 
 ## LimitClause ::= ("limit" (BindParameter | Number)?)?
     LimitClauseEps                : LimitClause <- eps
