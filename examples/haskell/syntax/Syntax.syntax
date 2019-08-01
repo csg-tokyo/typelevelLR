@@ -1,12 +1,12 @@
 
-syntax Syntax (Syntax) {
-  DefineSyntax      : Syntax   <- "syntax(String)" "startsWith(NonTerminal)" Rules
+syntax syntaxDSL (Syntax) {
+  DefineSyntax      : Syntax   <- "syntax(String)" "startsWith(String)" Rules
   RulesCons         : Rules    <- Rule Rules
   RulesNull         : Rules    <- eps
-  RuleDerive        : Rule     <- "rule(String)" "derive(NonTerminal)" RuleBody
-  RuleBodyTo        : RuleBody <- "to(Symbol)" RuleTail
+  RuleDerive        : Rule     <- "rule(String)" "derive(String)" RuleBody
+  RuleBodyTo        : RuleBody <- "to(String)" RuleTail
   RuleBodyToEpsilon : RuleBody <- "toEpsilon"
-  RuleTailTo        : RuleTail <- "andThen(Symbol)" RuleTail
+  RuleTailTo        : RuleTail <- "andThen(String)" RuleTail
   RuleTailEpsilon   : RuleTail <- eps
 }
 
