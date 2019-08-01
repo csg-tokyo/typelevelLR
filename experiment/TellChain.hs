@@ -123,6 +123,7 @@ tellScalaSource :: (MonadWriter (Endo String) m) => String -> String -> [S.Termi
 tellScalaSource modName libName chain = (`evalStateT` scalaTellChainEnv) $ do
   tellsLn  ""
   tellsLn ("object " ++ modName ++ " {")
+  tellsLn ("import " ++ libName ++ "._")
   tellsLn  "  def main(args: Array[String]) = {"
   tells   ("    val parseTree = ")
   tellScalaChain chain

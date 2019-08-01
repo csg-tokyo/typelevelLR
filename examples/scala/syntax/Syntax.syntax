@@ -1,0 +1,44 @@
+
+syntax Syntax (Syntax) {
+  DefineSyntax      : Syntax   <- "syntax(String)" "startsWith(String)" Rules
+  RulesCons         : Rules    <- Rule Rules
+  RulesNull         : Rules    <- eps
+  RuleDerive        : Rule     <- "rule(String)" "derive(String)" RuleBody
+  RuleBodyTo        : RuleBody <- "to(String)" RuleTail
+  RuleBodyToEpsilon : RuleBody <- "toEpsilon"
+  RuleTailTo        : RuleTail <- "andThen(String)" RuleTail
+  RuleTailEpsilon   : RuleTail <- eps
+}
+
+
+## sealed trait Symbol
+## class NonTerminal(name: String) extends Symbol
+## class Terminal(name: String, Params: List[String]) extends Symbol
+##
+## val eps = new NonTerminal("eps")
+##
+## val ntSyntax       = new NonTerminal("Syntax")
+## val ntRules        = new NonTerminal("Rules")
+## val ntRule         = new NonTerminal("Rule")
+## val ntRuleBody     = new NonTerminal("RuleBody")
+## val ntRuleTail     = new NonTerminal("RuleTail")
+##
+## val termSyntax     = new Terminal("syntax", List("String"))
+## val termStartsWith = new Terminal("startsWith", List("String"))
+## val termRule       = new Terminal("rule", List("String"))
+## val termDerive     = new Terminal("derive", List("NonTerminal"))
+## val termTo         = new Terminal("to", List("Symbol"))
+## val termToEpsilon  = new Terminal("toEpsilon", List())
+## val termAndThen    = new Terminal("andThen", List("Symbol"))
+##
+## val syntax: Syntax = begin()
+##   .syntax("Syntax").startsWith(Syntax)
+##     .rule("DefineSyntax").derive(Syntax).to(termSyntax).andThen(termStartsWith).andThen(ntRules)
+##     .rule("RulesCons").derive(ntRules).to(ntRule).andThen(ntRules)
+##     .rule("RulesNull").derive(ntRules).toEpsilon()
+##     .rule("RuleDerive").derive(ntRule).to(termRule).andThen(termDerive).andThen(ntRuleBody)
+##     .rule("RuleBodyTo").derive(ntRuleBody).to(termTo).andThen(RuleTail)
+##     .rule("RuleBodyToEpsilon").derive(ntRuleBody).to(termToEpsilon)
+##     .rule("RuleTailTo").derive(RuleTail).to(termAndThen).andThen(ntRuleTail)
+##     .rule("RuleTailEpsilon").derive(RuleTail).toEpsilon()
+## .end()

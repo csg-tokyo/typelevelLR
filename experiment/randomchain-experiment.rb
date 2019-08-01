@@ -1,4 +1,6 @@
 
+require 'optparse'
+
 ###############################################################################
 
 ## configuration
@@ -42,6 +44,7 @@ def runshell(command)
   unless $?.success?
     raise RuntimeError, "`#{ command }` failed"
   end
+  result
 end
 
 ###############################################################################
@@ -116,17 +119,18 @@ class RandomChainExperiment < Experiment
   end
 
   def setup
-    runshell("typelevelLR --haskell")
-    ## runshell("ghc -O2 -fcontext-stack=2000 SQL.hs")
+    syntaxfile = find_syntax_file
+    runshell("typelevelLR --#{ lang }")
+    libname = runshell("./GenRandomChainCI show-#{ lang }-libname #{ syntaxfile }")
     ns.each do |n|
       ms.each do |m|
-        filename = "#{ main }-n#{ n }-m#{ m }#{ ext }"
+        filename = "#{ main }_n#{ n }_m#{ m }#{ ext }"
         syntaxfile = find_syntax_file
         begin
           unless File.exists?(filename)
-            runshell("./GenRandomChainCI --#{ lang } -n #{ n } -o #{ filename } #{ syntaxfile }")
+            runshell("./GenRandomChainCI gen-#{ lang }-chain -n #{ n } -o #{ filename } #{ syntaxfile }")
           end
-          setting = { n: n, m: m, filename: filename, syntaxfile: syntaxfile }
+          setting = { n: n, m: m, filename: filename, syntaxfile: syntaxfile, libname: libname }
           yield setting
         rescue RuntimeError
           log("fail to generate random chain (length of #{ n })")
@@ -161,7 +165,7 @@ class RandomChainExperiment < Experiment
     syntaxfile = find_syntax_file
     runshell("cp #{ syntaxfile } #{ workspace_name }/")
     unless File.exists?('./GenRandomChainCI')
-      runshell("ghc -O2 -i.:../src GenRandomChainCI.hs")
+      throw RuntimeError, "file not found -- GenRandomChainCI"
     end
     runshell("cp GenRandomChainCI #{ workspace_name }/")
 
@@ -194,17 +198,105 @@ class HaskellRandomChainExperiment < RandomChainExperiment
   end
 end
 
-module Scala
+class ScalaRandomChainExperiment < RandomChainExperiment
+  def lang
+    'scala'
+  end
+
+  def main
+    'main'
+  end
+
+  def ext
+    '.scala'
+  end
+
+  def compile(filename)
+    runshell("scalac -sourcepath . -J-Xss100m #{ filename }")
+  end
+
+  def cleanup(setting)
+    basename = File.basename(setting[:filename], '.scala')
+    runshell("rm #{ basename }.class #{ basename }$.class")
+  end
 end
 
-module Cpp
+class CppRandomChainExperiment < RandomChainExperiment
+  def lang
+    'cpp'
+  end
+
+  def main
+    'main'
+  end
+
+  def ext
+    '.cpp'
+  end
+
+  def target(setting)
+    filename = setting[:filename]
+    basename = File.basename(filename, '.cpp')
+    libname  = setting[:libname ]
+    unless File.exists?("#{ libname }.o")
+      compile("#{ libname }.cpp", ['-c'])
+    end
+    copmile("#{ basename }.cpp", ['-c'])
+    compile("#{ libname }.o #{ basename.o }", ['-o #{ basename }'])
+  end
+
+  def compile(filename, additional_options = [])
+    runshell("g++ -O2 -std=c++17 #{ additional_options.join(' ') } #{ filename }")
+  end
+
+  def cleanup(setting)
+    filename = setting[:filename]
+    basename = File.basename(filename, '.cpp')
+    runshell("rm #{ basename } #{ basename }.o")
+  end
 end
 
 ###############################################################################
 
-$verbouse = true
-results = HaskellRandomChainExperiment.new(nil, nil).invoke
+opt = OptionParser.new
 
+config = {}
+
+opt.on('--hs', '--haskell') { config[:haskell] = true }
+opt.on('--scala') { config[:scala] = true }
+opt.on('--cpp') { config[:cpp] = true }
+opt.on('-v', '--verbouse') { $verbouse = true }
+opt.on('-n N', '--max-n N') { |n| config[:max_n] = n.to_i }
+opt.on('-m M', '--max-m M') { |n| config[:max_m] = n.to_i }
+opt.on('--num-warmup N') { |n| $num_warmup = n.to_i }
+opt.on('--num-measure N') { |n| $num_measure = n.to_i }
+
+opt.parse!(ARGV)
+
+###############################################################################
+
+case [config[:haskell], config[:scala], config[:cpp]].count(true)
+when 0
+  raise RuntimeError, "non of --haskell nor --scala nor --cpp is passed"
+when 1
+else
+  raise RuntimeError, "multiple options of --haskell and --scala and --cpp are passed"
+end
+
+max_n = config[:max_n] || 200
+max_m = config[:max_m] || 10
+
+ns = 1 .. max_n
+ms = 1 .. max_m
+
+experiment = if config[:haskell]; HaskellRandomChainExperiment.new(ns, ms)
+             elsif config[:scala]; ScalaRandomChainExperiment.new(ns, ms)
+             elsif config[:cpp]; CppRandomChainExperiment.new(ns, ms)
+             end
+
+results = experiment.invoke
+
+puts "n, m, mean, variance"
 results.each do |setting, ts|
   puts "#{ setting[:n] }, #{ setting[:m] }, #{ mean(ts) }, #{ variance(ts) }"
 end

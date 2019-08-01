@@ -7,6 +7,7 @@ import Utility
 import Syntax
 import LALRAutomaton
 import LRTable
+import Debug.Trace
 
 import Control.Monad.Reader
 
@@ -69,9 +70,15 @@ nodeType_ node = nodeInfoType <$> nodeInfo_ node
 reducesFrom_ :: (MonadReader CodeGenerateEnv m) => LRNode -> Rule -> m [([LRNode], [LRNode])]
 reducesFrom_ node rule = do
   automaton <- automaton_
-  return [(reverse srcPath, reverse dstPath) |
-          (srcPath, dstPath) <- reduces automaton rule,
-          last srcPath == node]
+  -- return [(reverse srcPath, reverse dstPath) |
+  --         (srcPath, dstPath) <- reduces automaton rule,
+  --         last srcPath == node]
+  let result = [(reverse srcPath, reverse dstPath) |
+                (srcPath, dstPath) <- reduces automaton rule,
+                last srcPath == node]
+  node_ <- nodeName_ node
+  -- traceShow (node_, rule, length result) (return ())
+  return result
 
 -------------------------------------------------------------------------------
 
