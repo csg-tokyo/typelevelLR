@@ -112,6 +112,8 @@ tellCppSource _modName libName chain = (`evalStateT` cppTellChainEnv) $ do
   tellsLn  ""
   tellsLn  "#include <iostream>"
   tellsLn ("#include \"" ++ libName ++ ".hpp\"")
+  tellsLn ("using namespace " ++ libName ++ ";")
+  tellsLn  ""
   tellsLn  "int main() {"
   tells    "    auto parseTree = "
   tellCppChain chain

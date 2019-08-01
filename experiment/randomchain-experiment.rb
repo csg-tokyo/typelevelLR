@@ -121,7 +121,7 @@ class RandomChainExperiment < Experiment
   def setup
     syntaxfile = find_syntax_file
     runshell("typelevelLR --#{ lang }")
-    libname = runshell("./GenRandomChainCI show-#{ lang }-libname #{ syntaxfile }")
+    libname = runshell("./GenRandomChainCI show-#{ lang }-libname #{ syntaxfile }").strip
     ns.each do |n|
       ms.each do |m|
         filename = "#{ main }_n#{ n }_m#{ m }#{ ext }"
@@ -165,7 +165,7 @@ class RandomChainExperiment < Experiment
     syntaxfile = find_syntax_file
     runshell("cp #{ syntaxfile } #{ workspace_name }/")
     unless File.exists?('./GenRandomChainCI')
-      throw RuntimeError, "file not found -- GenRandomChainCI"
+      raise RuntimeError, "file not found -- GenRandomChainCI"
     end
     runshell("cp GenRandomChainCI #{ workspace_name }/")
 
@@ -241,8 +241,8 @@ class CppRandomChainExperiment < RandomChainExperiment
     unless File.exists?("#{ libname }.o")
       compile("#{ libname }.cpp", ['-c'])
     end
-    copmile("#{ basename }.cpp", ['-c'])
-    compile("#{ libname }.o #{ basename.o }", ['-o #{ basename }'])
+    compile("#{ basename }.cpp", ['-c'])
+    compile("#{ libname }.o #{ basename }.o", ["-o #{ basename }"])
   end
 
   def compile(filename, additional_options = [])
