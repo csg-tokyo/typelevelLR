@@ -16,8 +16,8 @@ newtype TellChainEnv = TellChainEnv (Map.Map String [String])
 tellChainEnvLookup :: (MonadState TellChainEnv m) => String -> m String
 tellChainEnvLookup key = state $ \(TellChainEnv bindings) ->
   case Map.lookup key bindings of
-    Nothing -> error ""
-    Just [] -> error ""
+    Nothing -> error ("unknown type found -- " ++ key)
+    Just [] -> error ("no remaining value for " ++ key)
     Just (v : vs) -> (v, TellChainEnv (Map.insert key vs bindings))
 
 -------------------------------------------------------------------------------
