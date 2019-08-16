@@ -1,5 +1,5 @@
 
-syntax Syntax (Syntax) {
+syntax syntax (Syntax) {
   DefineSyntax      : Syntax   <- "syntax(String)" "startsWith(String)" Rules
   RulesCons         : Rules    <- Rule Rules
   RulesNull         : Rules    <- eps
