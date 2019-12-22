@@ -1,0 +1,12 @@
+#!/bin/bash
+FILE=./bin/typelevelLR
+if [[ -f "$FILE" ]]; then
+  echo "$FILE exists, use build cache."
+  mv ./bin/typelevelLR /usr/local/bin
+  /bin/bash
+  exit 0
+fi
+
+echo "building typelevelLR..."
+stack install && cp $(which typelevelLR) ./bin/
+/bin/bash
