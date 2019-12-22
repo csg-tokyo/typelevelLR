@@ -8,5 +8,5 @@ if [[ -f "$FILE" ]]; then
 fi
 
 echo "building typelevelLR..."
-stack install && cp $(which typelevelLR) ./bin/
+stack install && mkdir -p bin  && cp $(which typelevelLR) ./bin/
 /bin/bash
