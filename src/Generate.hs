@@ -7,9 +7,10 @@ import SyntaxParser  (parseSyntax, parse, eliminateComment)
 import LALRAutomaton (lalrAutomaton)
 import CodeGenerateEnv
 
-import qualified GenerateHaskell as GenHs
-import qualified GenerateCpp     as GenCpp
-import qualified GenerateScala   as GenScala
+import qualified GenerateHaskell      as GenHs
+import qualified GenerateCpp          as GenCpp
+import qualified GenerateTypeScript   as GenTypeScript
+import qualified GenerateScala        as GenScala
 
 import System.FilePath       ((</>))
 import Data.Monoid           (Endo(appEndo))
@@ -58,6 +59,21 @@ generateCpp src dst = do
   writeFile  hppFilePath     hppCode
   writeFile  cppFilePath     cppCode
   writeFile  hppImplFilePath hppImplCode
+
+-------------------------------------------------------------------------------
+
+generateTypeScript :: FilePath -> FilePath -> IO ()
+generateCpp src dst = do
+  syntaxSource <- readFile src
+  let syntax = case parse parseSyntax src (eliminateComment syntaxSource) of
+        Left  err -> error (show err)
+        Right s   -> s
+
+  let tsFilePath = dst </> (pascalCase (syntaxName syntax) ++ ".ts")
+
+  let tsCode = generate (GenTypeScript.tellTypeScript syntax)
+
+  writeFile tsFilePath tsCode
 
 -------------------------------------------------------------------------------
 
