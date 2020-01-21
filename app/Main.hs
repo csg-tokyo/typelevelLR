@@ -3,7 +3,7 @@
 
 module Main where
 
-import Generate  (generateHaskell, generateCpp, generateScala)
+import Generate  (generateHaskell, generateCpp, generateTypeScript, generateScala)
 
 import Options.Declarative
 import System.FilePath         ((</>), (<.>))

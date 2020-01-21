@@ -63,7 +63,7 @@ generateCpp src dst = do
 -------------------------------------------------------------------------------
 
 generateTypeScript :: FilePath -> FilePath -> IO ()
-generateCpp src dst = do
+generateTypeScript src dst = do
   syntaxSource <- readFile src
   let syntax = case parse parseSyntax src (eliminateComment syntaxSource) of
         Left  err -> error (show err)
