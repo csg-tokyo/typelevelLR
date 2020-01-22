@@ -34,24 +34,24 @@ export class HelloWithName {
 
 type Node = Node1 | Node2 | Node3 | Node4
 class Node1 {
-    node1: never
+    private _node1Brand: boolean = true
 }
 class Node2 {
-    node2: never
+    private _node2Brand: boolean = true
     arg1 : Start
     constructor(arg1 : Start) {
         this.arg1 = arg1
     }
 }
 class Node3 {
-    node3: never
+    private _node3Brand: boolean = true
     arg1 : string
     constructor(arg1 : string) {
         this.arg1 = arg1
     }
 }
 class Node4 {
-    node4: never
+    private _node4Brand: boolean = true
 }
 
 type Length<T extends unknown[]> = T['length']
@@ -163,76 +163,53 @@ export type Fluent<Stack extends unknown[]> = (
     {}
 )
 
-export class FluentImpl {
-    constructor() {
-        return new Proxy(
-            [],
-            {
-                get(target: Node[], prop: unknown, receiver: any) {
-                    return (value: unknown) => {
-                        if (prop === 'end') {
-                            if (isNode2(target)) {
-                                return target[0].arg1
-                            }
-                            if (isNode341(target)) {
-                                const x1 = target[0].arg1
-                                const content = new HelloWithName(x1)
-                                const tail = target.slice(2)
-                                tail.push(new Node2(content))
-                                return receiver.end(tail)
-                            }
-                            if (isNode41(target)) {
-                                const content = new SimpleHello
-                                const tail = target.slice(1)
-                                tail.push(new Node2(content))
-                                return receiver.end(tail)
-                            }
-                        }
-                        if (prop === 'hello') {
-                            target.push(new Node4)
-                        }
-                        if (prop === 'name') {
-                            target.push(new Node3(value as string))
-                        }
-                        return receiver
-                    }
-                }
-            }
-        )
+class FluentImpl {
+    stack: Node[] = [new Node1]
+    end = () => {
+        if (isNode2(this.stack)) {
+            return this.stack[0].arg1
+        }
+        if (isNode341(this.stack)) {
+            const x1 = this.stack[0].arg1
+            const content = new HelloWithName(x1)
+            const tail = this.stack.slice(2)
+            this.stack = [new Node2(content), ...tail]
+            return this.end()
+        }
+        if (isNode41(this.stack)) {
+            const content = new SimpleHello
+            const tail = this.stack.slice(1)
+            this.stack = [new Node2(content), ...tail]
+            return this.end()
+        }
+    }
+    hello = () => {
+        this.stack = [new Node4, ...this.stack]
+        return this
+    }
+    name = (u: unknown) => {
+        this.stack = [new Node3(u as string), ...this.stack]
+        return this
     }
 }
 
 function isNode2(arg: any): arg is AddUnknownRest<[Node2]> {
-    return arg[0] && arg[0].node2 !== undefined
+    return arg[0] && arg[0]._node2Brand
 }
 
 function isNode341(arg: any): arg is AddUnknownRest<[Node3, Node4, Node1]> {
-    return arg[0] && arg[0].node3 !== undefined
-        && arg[1] && arg[1].node4 !== undefined
-        && arg[2] && arg[2].node1 !== undefined
+    return arg[0] && arg[0]._node3Brand
+        && arg[1] && arg[1]._node4Brand
+        && arg[2] && arg[2]._node1Brand
 }
 
 function isNode41(arg: any): arg is AddUnknownRest<[Node4, Node1]> {
-    return arg[0] && arg[0].node4 !== undefined
-        && arg[1] && arg[1].node1 !== undefined
+    return arg[0] && arg[0]._node4Brand
+        && arg[1] && arg[1]._node1Brand
 }
-
-// function end_transition(stack: AddUnknownRest<[Node2]>, ) {
-
-// }
-// function end_transition(stack: AddUnknownRest<[Node3, Node4, Node1]>) {
-
-// }
-// function end_transition(stack: AddUnknownRest<[Node4, Node1]>) {
-
-// }
 
 function begin(): Fluent<[Node1]> {
-    return class {
-        constructor() {
-            return new FluentImpl()
-        }
-    } as any
+    return new FluentImpl() as any
 }
 
-console.log(begin().hello().name("ok").end().accept(new ConstVisitor))
+begin().hello().name("ok").end().accept(new ConstVisitor)
