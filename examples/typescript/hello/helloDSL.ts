@@ -4,8 +4,12 @@ export class Visitor {
 }
 
 export class ConstVisitor {
-    visitSimpleHello(host : SimpleHello) {}
-    visitHelloWithName(host : HelloWithName) {}
+    visitSimpleHello(host : SimpleHello) {
+        console.log("hello")
+    }
+    visitHelloWithName(host : HelloWithName) {
+        console.log("hello", host.name)
+    }
 }
 
 abstract class Start {
@@ -15,7 +19,7 @@ abstract class Start {
 export class SimpleHello extends Start {
     accept(v : Visitor): void
     accept(v : ConstVisitor): void
-    accept(v : Visitor | ConstVisitor) {}
+    accept(v : Visitor | ConstVisitor) { v.visitSimpleHello(this) }
 }
 
 export class HelloWithName {
@@ -25,9 +29,10 @@ export class HelloWithName {
     }
     accept(v : Visitor): void
     accept(v : ConstVisitor): void
-    accept(v : Visitor | ConstVisitor) {}
+    accept(v : Visitor | ConstVisitor) { v.visitHelloWithName(this) }
 }
 
+type Node = Node1 | Node2 | Node3 | Node4
 class Node1 {
     node1: never
 }
@@ -136,7 +141,7 @@ interface ProxyConstructor {
 declare var Proxy: ProxyConstructor
 declare interface ProxyHandler<T> {}
 
-type Fluent<Stack extends unknown[]> = (
+export type Fluent<Stack extends unknown[]> = (
     StartsWith<Stack, [Node2]> extends 1 ?
     { end: () => Start } :
     {}
@@ -158,14 +163,37 @@ type Fluent<Stack extends unknown[]> = (
     {}
 )
 
-class FluentImpl {
+export class FluentImpl {
     constructor() {
         return new Proxy(
             [],
             {
-                get(target: unknown[], prop: unknown, receiver: unknown) {
+                get(target: Node[], prop: unknown, receiver: any) {
                     return (value: unknown) => {
-                        target.push(value)
+                        if (prop === 'end') {
+                            if (isNode2(target)) {
+                                return target[0].arg1
+                            }
+                            if (isNode341(target)) {
+                                const x1 = target[0].arg1
+                                const content = new HelloWithName(x1)
+                                const tail = target.slice(2)
+                                tail.push(new Node2(content))
+                                return receiver.end(tail)
+                            }
+                            if (isNode41(target)) {
+                                const content = new SimpleHello
+                                const tail = target.slice(1)
+                                tail.push(new Node2(content))
+                                return receiver.end(tail)
+                            }
+                        }
+                        if (prop === 'hello') {
+                            target.push(new Node4)
+                        }
+                        if (prop === 'name') {
+                            target.push(new Node3(value as string))
+                        }
                         return receiver
                     }
                 }
@@ -173,6 +201,35 @@ class FluentImpl {
         )
     }
 }
+
+function end_transition(tag: "AddUnknownRest<[Node2]>", stack: unknown[]) {
+
+}
+
+function isNode2(arg: any): arg is AddUnknownRest<[Node2]> {
+    return arg[0] && arg[0].node2 !== undefined
+}
+
+function isNode341(arg: any): arg is AddUnknownRest<[Node3, Node4, Node1]> {
+    return arg[0] && arg[0].node3 !== undefined
+        && arg[1] && arg[1].node4 !== undefined
+        && arg[2] && arg[2].node1 !== undefined
+}
+
+function isNode41(arg: any): arg is AddUnknownRest<[Node4, Node1]> {
+    return arg[0] && arg[0].node4 !== undefined
+        && arg[1] && arg[1].node1 !== undefined
+}
+
+// function end_transition(stack: AddUnknownRest<[Node2]>, ) {
+
+// }
+// function end_transition(stack: AddUnknownRest<[Node3, Node4, Node1]>) {
+
+// }
+// function end_transition(stack: AddUnknownRest<[Node4, Node1]>) {
+
+// }
 
 function begin(): Fluent<[Node1]> {
     return class {
@@ -182,4 +239,20 @@ function begin(): Fluent<[Node1]> {
     } as any
 }
 
-console.log(begin().hello().name("ok").end())
+console.log(begin().hello().name("ok").end().accept(new ConstVisitor))
+
+export type AnyFunction<A = any> = (...input: any[]) => A
+export type AnyConstructor<A = object> = new (...input: any[]) => A
+export type Mixin<T extends AnyFunction> = InstanceType<ReturnType<T>>
+export const Eq = <T extends AnyConstructor<object>>(base : T) =>
+    class Eq extends base {
+        equal (another : this) : boolean {
+            return !this.notEqual(another)
+        }
+
+        notEqual (another : this) : boolean {
+            return !this.equal(another)
+        }
+}
+
+export type Eq = Mixin<typeof Eq>
