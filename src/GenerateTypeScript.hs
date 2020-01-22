@@ -35,21 +35,101 @@ tellTypeScript syntax = let automaton = lalrAutomaton syntax in
   (`runReaderT` buildCodeGenerateEnv syntax automaton) $ do
     let moduleName = pascalCase (syntaxName syntax)
     tellNewline
-    tellsLn ("namespace " ++ moduleName ++ " {")
-    tellNewline
     tellSeparator
     tellNewline
     sequenceWithSep_ (tellNewline >> tellSeparator >> tellNewline) $
       [tellGrammar,
+       tellUtils,
        tellASTDefinitions,
        tellTerminalMethodDefinitions,
        tellAutomatonStates,
        tellTransitions,
        tellInitialState]
-    tellsLn ("}")
     tellNewline
     tellSeparator
     tellNewline
+
+-------------------------------------------------------------------------------
+
+utilScripts = "type Length<T extends unknown[]> = T['length']\n\
+\type Prepend<Elm, T extends unknown[]> = ((\n\
+\    arg: Elm,\n\
+\    ...rest: T\n\
+\) => void) extends ((...args: infer T2) => void)\n\
+\    ? T2\n\
+\    : never\n\
+\\n\
+\type Rest<T extends unknown[]> = ((\n\
+\    ...rest: T\n\
+\) => void) extends ((head: unknown, ...args: infer T2) => void)\n\
+\    ? T2\n\
+\    : never\n\
+\declare const None: unique symbol\n\
+\type None = typeof None\n\
+\type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]\n\
+\type AddUnknownRest<Tuple extends unknown[], Result extends unknown[] = [...unknown[]]> = {\n\
+\    empty: Result,\n\
+\    nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Next) => unknown)\n\
+\      ? Prepend<First, AddUnknownRest<Rest<Tuple>, Result>>\n\
+\      : never\n\
+\}[\n\
+\    Tuple extends [unknown, ...unknown[]]\n\
+\      ? 'nonEmpty'\n\
+\      : 'empty'\n\
+\]\n\
+\type CompareLength<Left extends any[], Right extends any[]> = {\n\
+\    fitBoth: 'equal'\n\
+\    fitLeft: 'shorterLeft'\n\
+\    fitRight: 'shorterRight'\n\
+\    unfit: ((..._: Left) => any) extends ((_: any, ..._1: infer LeftRest) => any) ?\n\
+\         ((..._: Right) => any) extends ((_: any, ..._1: infer RightRest) => any) ?\n\
+\            CompareLength<LeftRest, RightRest>\n\
+\        : never\n\
+\        : never\n\
+\}[\n\
+\    Left['length'] extends Right['length'] ? 'fitBoth' :\n\
+\    Left extends [] ? 'fitLeft' :\n\
+\    Right extends [] ? 'fitRight' :\n\
+\    'unfit'\n\
+\]\n\
+\type StartsWith<Tuple extends unknown[], Tuple2 extends unknown[]> = {\n\
+\    false: 0,n\
+\    empty: 1,\n\
+\    nonEmpty: Head<Tuple> extends Head<Tuple2>\n\
+\        ? StartsWith<Rest<Tuple>, Rest<Tuple2>>\n\
+\        : 0\n\
+\}[\n\
+\    CompareLength<Tuple, Tuple2> extends 'shorterLeft'\n\
+\        ? 'false'\n\
+\        : IsFinite<Tuple2, 'finite', 'infinite'> extends 'infinite'\n\
+\            ? 'false'\n\
+\            : Tuple2 extends [unknown, ...unknown[]]\n\
+\                ? 'nonEmpty'\n\
+\                : 'empty'\n\
+\]\n\
+\type IsFinite<Tuple extends unknown[], Finite, Infinite> = {\n\
+\    empty: Finite\n\
+\    nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Rest) => unknown)\n\
+\      ? IsFinite<Rest, Finite, Infinite>\n\
+\      : never\n\
+\    infinite: Infinite\n\
+\}[\n\
+\    Tuple extends [] ? 'empty' :\n\
+\    Tuple extends (infer Element)[] ?\n\
+\    Element[] extends Tuple ?\n\
+\      'infinite'\n\
+\    : 'nonEmpty'\n\
+\    : never\n\
+\]\n"
+
+tellUtils :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
+             m ()
+tellUtils = do
+  tellsLn "// util scripts"
+  tellNewline
+  tellsLn utilScripts
+  tellsLn "//"
+  tellNewline
 
 -------------------------------------------------------------------------------
 
