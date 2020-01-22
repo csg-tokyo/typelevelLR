@@ -70,8 +70,8 @@ type IsFinite<Tuple extends unknown[], Finite, Infinite> = {
 ]
 
 export abstract class Visitor {
-    abstract visitSimpleHello(host : SimpleHello)
-    abstract visitHelloWithName(host : HelloWithName)
+    abstract visitSimpleHello(host : SimpleHello): unknown
+    abstract visitHelloWithName(host : HelloWithName): unknown
 }
 
 class DefaultVisitor extends Visitor {
