@@ -202,10 +202,6 @@ export class FluentImpl {
     }
 }
 
-function end_transition(tag: "AddUnknownRest<[Node2]>", stack: unknown[]) {
-
-}
-
 function isNode2(arg: any): arg is AddUnknownRest<[Node2]> {
     return arg[0] && arg[0].node2 !== undefined
 }
@@ -240,19 +236,3 @@ function begin(): Fluent<[Node1]> {
 }
 
 console.log(begin().hello().name("ok").end().accept(new ConstVisitor))
-
-export type AnyFunction<A = any> = (...input: any[]) => A
-export type AnyConstructor<A = object> = new (...input: any[]) => A
-export type Mixin<T extends AnyFunction> = InstanceType<ReturnType<T>>
-export const Eq = <T extends AnyConstructor<object>>(base : T) =>
-    class Eq extends base {
-        equal (another : this) : boolean {
-            return !this.notEqual(another)
-        }
-
-        notEqual (another : this) : boolean {
-            return !this.equal(another)
-        }
-}
-
-export type Eq = Mixin<typeof Eq>
