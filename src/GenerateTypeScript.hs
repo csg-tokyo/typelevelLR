@@ -42,7 +42,6 @@ tellTypeScript syntax = let automaton = lalrAutomaton syntax in
       [tellGrammar,
        tellUtils,
        tellASTDefinitions,
-       tellTerminalMethodDefinitions,
        tellAutomatonStates,
        tellTransitions,
        tellInitialState]
@@ -143,25 +142,6 @@ tellASTDefinitions = do
       tellsLn $ "\t\tprocess.stdout.write(\")\")"
       tellsLn "\t}"
   tellsLn "}"
-
--------------------------------------------------------------------------------
-
-tellTerminalMethodDefinitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
-                                 m ()
-tellTerminalMethodDefinitions = do
-  syntax <- syntax_
-  tellsLn "// terminal symbols"
-  tellNewline
-  forMWithSep_ tellNewline (syntaxTerminals syntax) $ \case
-    UserTerminal name params -> do
-      tellsLn ("class " ++ pascalCase name ++ "Transition s t | s -> t where")
-      tells ("  " ++ camelCase name ++ " :: ")
-      forM_ params $ \param -> tells param >> tells " -> "
-      tellsLn "s -> t"
-    t -> error ("invalid terminal symbol found -- " ++ show t)
-  tellNewline
-  tellsLn "class EndTransition s t | s -> t where"
-  tellsLn "  end :: s -> t"
 
 -------------------------------------------------------------------------------
 

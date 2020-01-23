@@ -159,19 +159,6 @@ export class DefaultVisitor implements Visitor {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// terminal symbols
-
-class NameTransition s t | s -> t where
-  name :: string -> s -> t
-
-class HelloTransition s t | s -> t where
-  hello :: s -> t
-
-class EndTransition s t | s -> t where
-  end :: s -> t
-
-///////////////////////////////////////////////////////////////////////////////
-
 // automaton states
 
 type Node = Node1 | Node2 | Node3 | Node4 | Node5
