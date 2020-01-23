@@ -102,7 +102,7 @@ tellASTDefinitions = do
           tells "\tconstructor("
           forMWithSep_ (tells ", ") args $ \(argType, argName) -> do
             tells $ argName ++ " : " ++ argType
-          tellsLn "\t) {"
+          tellsLn ") {"
           forM_ args $ \(argType, argName) -> do
             tellsLn $ "\t\tthis." ++ argName ++ " = " ++ argName
           tellsLn "\t}"
@@ -118,27 +118,31 @@ tellASTDefinitions = do
   tellNewline
 
   -- AST visitors
-  forMWithSep_ tellNewline (syntaxNonTerminals syntax) $ \nt -> do
-    tellsLn "interface Visitor {"
+  tellsLn "interface Visitor {"
+  forM_ (syntaxNonTerminals syntax) $ \nt -> do
     forM_ (syntaxRules syntax nt) $ \rule -> do
       let className = pascalCase (ruleName rule)
       tellsLn $ "\tvisit" ++ className ++ "(host : " ++ className ++ "): void"
-    tellsLn "}"
+  tellsLn "}"
 
-    tellNewline
+  tellNewline
 
-    tellsLn "export class DefaultVisitor implements Visitor {"
-    forM_ (zip (syntaxTerminals syntax) (syntaxRules syntax nt)) $ \case
-      (UserTerminal name params, rule) -> do
-        let className = pascalCase (ruleName rule)
-        tellsLn $ "\tvisit" ++ className ++ "(host : " ++ className ++ ") {"
-        tells $ "\t\tconsole.log(\"" ++ name ++ "\""
-        forM_ (zip [1 ..] params) $ \(i, param) -> do
-          tells (", host.arg" ++ show i)
-        tellsLn ")"
-        tellsLn "\t}"
-      t -> error ("invalid terminal symbol found -- " ++ show t)
-    tellsLn "}"
+  tellsLn "export class DefaultVisitor implements Visitor {"
+  forM_ (syntaxNonTerminals syntax) $ \nt -> do
+    forM_ (syntaxRules syntax nt) $ \rule -> do
+      let className = pascalCase (ruleName rule)
+      tellsLn $ "\tvisit" ++ className ++ "(host : " ++ className ++ ") {"
+      tellsLn $ "\t\tprocess.stdout.write(\"" ++ className ++ "(\")"
+      forM_ (zip [1 ..] (concat $ ruleParams rule)) $ \(i, typ) -> do
+        -- tellsLn $ concat $ map nonTerminalName $ syntaxNonTerminals syntax
+        if elem typ $ map (pascalCase . nonTerminalName) $ syntaxNonTerminals syntax
+        then
+          tellsLn ("\t\thost.arg" ++ show i ++ ".accept(this)")
+        else
+          tellsLn ("\t\tprocess.stdout.write(host.arg" ++ show i ++ ")")
+      tellsLn $ "\t\tprocess.stdout.write(\")\")"
+      tellsLn "\t}"
+  tellsLn "}"
 
 -------------------------------------------------------------------------------
 
@@ -161,8 +165,7 @@ tellTerminalMethodDefinitions = do
 
 -------------------------------------------------------------------------------
 
-tellAutomatonStates :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
-                       m ()
+tellAutomatonStates :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) => m ()
 tellAutomatonStates = do
   nodes <- nodes_
   tellsLn "// automaton states"
@@ -190,11 +193,10 @@ tellAutomatonStates = do
 
 -------------------------------------------------------------------------------
 
-tellTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
-                => m ()
+tellTransitions ::  (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) => m ()
 tellTransitions = do
   table <- lrTable_
-  tellsLn "-- transition instances"
+  tellsLn "// transitions"
   tellNewline
   forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> do
     case action of
@@ -202,60 +204,64 @@ tellTransitions = do
       Reduce rule -> tellReduceTransition src t rule
       Accept      -> tellAcceptTransition src
 
+
 tellShiftTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                     => LRNode -> Terminal -> LRNode -> m ()
 tellShiftTransition src t dst = do
   srcName <- pascalCase <$> nodeName_ src
   dstName <- pascalCase <$> nodeName_ dst
-  let className = pascalCase (terminalName t) ++ "Transition"
-  let srcType = "(" ++ srcName ++ " prev)"
-  let dstType = "(" ++ dstName ++ " (" ++ srcName ++ " prev))"
-  let params = concat [" arg" ++ show i | (i, _) <- zip [1 ..] (terminalParams t)]
-  tellsLn ("instance " ++ className ++ " " ++ srcType ++ " " ++ dstType ++ " where")
-  tellsLn ("  " ++ camelCase (terminalName t) ++ params ++ " src = " ++ dstName ++ " src" ++ params)
+  let funName = terminalName t ++ "_transition"
+  let srcType = "State< " ++ srcName ++ ", Tail... >"
+  let dstType = "State< " ++ dstName ++ ", " ++ srcName ++ ", Tail... >"
+  let params = terminalParams t
+  let paramList = srcType ++ " const& src" ++ concat [", " ++ typ ++ " const& arg" ++ show i | (i, typ) <- zip [1 ..] params]
+  let dstArgs = intercalate ", " ["arg" ++ show i | (i, _) <- zip [1 ..] params]
+  tellsLn "template< typename... Tail >"
+  tellsLn ("auto " ++ funName ++ "( " ++ paramList ++ " ) {")
+  tellsLn ("  return " ++ dstType ++ "::make( " ++ dstName ++ "( " ++ dstArgs ++ " ), src );")
+  tellsLn "}"
 
 tellReduceTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> Terminal -> Rule -> m ()
 tellReduceTransition src t rule = do
-  srcName <- pascalCase <$> nodeName_ src
-  let pathToType path = case path of
-        [] -> return "prev"
-        node : rest -> do nodeName <- pascalCase <$> nodeName_ node
-                          restType <- pathToType rest
-                          return ("(" ++ nodeName ++ " " ++ restType ++ ")")
   reduces <- reducesFrom_ src rule
   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
-    srcType <- pathToType srcPath
-    dstType <- pathToType dstPath
+    srcType <- do path <- mapM nodeName_ srcPath
+                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
+    dstType <- do path <- mapM nodeName_ dstPath
+                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
+    baseType <- do baseName <- nodeName_ (last dstPath)
+                   return ("State< " ++ baseName ++ ", Tail... >")
+    let funName = terminalName t ++ "_transition"
+    let params = terminalParams t
+    let paramList = " const& src" ++ concat [", " ++ typ ++ " const& arg" ++ show i | (i, typ) <- zip [1 ..] params]
     dstName <- pascalCase <$> nodeName_ (head dstPath)
-    let className = pascalCase (terminalName t) ++ "Transition"
-    let methodName = camelCase (terminalName t)
-    let constraint = className ++ " " ++ dstType ++ " t"
-    let (n, ipss) = mapAccumL (mapAccumL (\i a -> (i + 1, (i, a)))) 1 (ruleParams rule)
-    let makeParamSrc ipsns = case ipsns of
-          []                 -> return "prev"
-          (ips, node) : rest -> do
-            nodeName <- pascalCase <$> nodeName_ node
-            rest'    <- makeParamSrc rest
-            let params = concat [" arg" ++ show i | (i, _) <- ips]
-            return ("(" ++ nodeName ++ " " ++ rest' ++ params ++ ")")
-    paramSrc <- makeParamSrc (zip (reverse ipss) srcPath)
-    let args = concat [" arg" ++ show i | i <- [1 .. n - 1]]
-    let reductionRule = pascalCase (ruleName rule)
-    let dst = "(" ++ dstName ++ " prev (" ++ reductionRule ++ args ++ "))"
-    let params = concat [" p" ++ show i | (i, _) <- zip [1 ..] (terminalParams t)]
-    tellsLn ("instance (" ++ constraint ++ ") => " ++ className ++ " " ++ srcType ++ " t where")
-    tellsLn ("  " ++ methodName ++ params ++ " " ++ paramSrc ++ " = " ++ methodName ++ params ++ " " ++ dst)
+    let contentType = (nonTerminalName (ruleLhs rule))
+    tellsLn "template< typename... Tail >"
+    tellsLn ("auto " ++ funName ++ "( " ++ paramList ++ " ) {")
+    n <- (`execStateT` 0) $ forM_ (zip [1 ..] (ruleRhs rule)) $ \(i, sym) -> case sym of
+      NonTerminalSymbol nt -> do
+        j <- modify (+ 1) >> get
+        tellsLn ("  " ++ (nonTerminalName nt) ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg1;")
+      TerminalSymbol t -> do
+        forM_ (zip [1 ..] (terminalParams t)) $ \(k, param) -> do
+          j <- modify (+ 1) >> get
+          tellsLn ("  " ++ param ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg" ++ show k ++ ";")
+    tellsLn ("  " ++ contentType ++ " const& content = " ++ contentType ++ "( new " ++ ruleName rule ++ "( " ++ intercalate ", " ["x" ++ show i | i <- [1 .. n]] ++ " ) );")
+    tellsLn ("  " ++ baseType ++ " const& tail = src" ++ concat ["->tail" | _ <- tail srcPath] ++ ";")
+    tellsLn ("  return " ++ funName ++ "( " ++ dstType ++ "::make( " ++ dstName ++ "( content ), tail )" ++ concat [", arg" ++ show i | (i, _) <- zip [1 ..] params] ++ " );")
+    tellsLn "}"
 
 tellAcceptTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> m ()
 tellAcceptTransition src = do
-  srcName <- pascalCase <$> nodeName_ src
-  let srcType = "(" ++ srcName ++ " prev)"
-  NonTerminalSymbol nt <- nodeType_ src
-  let resultType = pascalCase (nonTerminalName nt)
-  tellsLn ("instance EndTransition " ++ srcType ++ " " ++ resultType ++ " where")
-  tellsLn ("  end (" ++ srcName ++ " _ arg1) = arg1")
+  srcName <- nodeName_ src
+  let srcType = "State< " ++ srcName ++ ", Tail... >"
+  [resultType] <- nodeParams_ src
+  tellsLn "template< typename... Tail >"
+  tellsLn ("auto end_transition( std::shared_ptr< " ++ srcType ++ " > const& src ) {")
+  tellsLn "  return src->head.arg1;"
+  tellsLn "}"
 
 -------------------------------------------------------------------------------
 

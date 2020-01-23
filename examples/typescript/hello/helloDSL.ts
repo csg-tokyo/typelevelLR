@@ -3,8 +3,9 @@
 
 // grammar definition
 
-// begin : Start -> "hello()"
-// end : Start -> "hello()" "name(string)"
+// simpleHello : start -> "hello()"
+// helloWithName : start -> "hello()" name
+// nameString : name -> "name(string)"
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -91,41 +92,68 @@ interface Start {
 	abstract accept(v? : Visitor): void
 }
 
-export class Begin implements Start {
+interface Name {
+	abstract accept(v? : Visitor): void
+}
+
+export class SimpleHello implements Start {
 	accept(v? : Visitor) {
 		if (v) {
-			v.visitBegin(this)
+			v.visitSimpleHello(this)
 		} else {
-			new DefaultVisitor().visitBegin(this)
+			new DefaultVisitor().visitSimpleHello(this)
 		}
 	}
 }
 
-export class End implements Start {
-	arg1 : string
-	constructor(arg1 : string	) {
+export class HelloWithName implements Start {
+	arg1 : Name
+	constructor(arg1 : Name) {
 		this.arg1 = arg1
 	}
 	accept(v? : Visitor) {
 		if (v) {
-			v.visitEnd(this)
+			v.visitHelloWithName(this)
 		} else {
-			new DefaultVisitor().visitEnd(this)
+			new DefaultVisitor().visitHelloWithName(this)
+		}
+	}
+}
+
+export class NameString implements Name {
+	arg1 : string
+	constructor(arg1 : string) {
+		this.arg1 = arg1
+	}
+	accept(v? : Visitor) {
+		if (v) {
+			v.visitNameString(this)
+		} else {
+			new DefaultVisitor().visitNameString(this)
 		}
 	}
 }
 
 interface Visitor {
-	visitBegin(host : Begin): void
-	visitEnd(host : End): void
+	visitSimpleHello(host : SimpleHello): void
+	visitHelloWithName(host : HelloWithName): void
+	visitNameString(host : NameString): void
 }
 
 export class DefaultVisitor implements Visitor {
-	visitBegin(host : Begin) {
-		console.log("hello")
+	visitSimpleHello(host : SimpleHello) {
+		process.stdout.write("SimpleHello(")
+		process.stdout.write(")")
 	}
-	visitEnd(host : End) {
-		console.log("name", host.arg1)
+	visitHelloWithName(host : HelloWithName) {
+		process.stdout.write("HelloWithName(")
+		host.arg1.accept(this)
+		process.stdout.write(")")
+	}
+	visitNameString(host : NameString) {
+		process.stdout.write("NameString(")
+		process.stdout.write(host.arg1)
+		process.stdout.write(")")
 	}
 }
 
@@ -133,11 +161,11 @@ export class DefaultVisitor implements Visitor {
 
 // terminal symbols
 
-class HelloTransition s t | s -> t where
-  hello :: s -> t
-
 class NameTransition s t | s -> t where
   name :: string -> s -> t
+
+class HelloTransition s t | s -> t where
+  hello :: s -> t
 
 class EndTransition s t | s -> t where
   end :: s -> t
@@ -146,7 +174,7 @@ class EndTransition s t | s -> t where
 
 // automaton states
 
-type Node = Node1 | Node2 | Node3 | Node4
+type Node = Node1 | Node2 | Node3 | Node4 | Node5
 
 class Node1 {
 	private _Node1Brand: boolean = true
@@ -162,10 +190,18 @@ class Node2 {
 
 class Node3 {
 	private _Node3Brand: boolean = true
+	arg1 : Name
+	constructor(arg1 : Name) {
+		this.arg1 = arg1
+	}
 }
 
 class Node4 {
 	private _Node4Brand: boolean = true
+}
+
+class Node5 {
+	private _Node5Brand: boolean = true
 	arg1 : string
 	constructor(arg1 : string) {
 		this.arg1 = arg1
@@ -174,22 +210,45 @@ class Node4 {
 
 ///////////////////////////////////////////////////////////////////////////////
 
--- transition instances
+// transitions
 
-instance EndTransition (Node2 prev) Start where
-  end (Node2 _ arg1) = arg1
+template< typename... Tail >
+auto end_transition( std::shared_ptr< State< Node2, Tail... > > const& src ) {
+  return src->head.arg1;
+}
 
-instance HelloTransition (Node1 prev) (Node3 (Node1 prev)) where
-  hello src = Node3 src
+template< typename... Tail >
+auto hello_transition( State< Node1, Tail... > const& src ) {
+  return State< Node4, Node1, Tail... >::make( Node4(  ), src );
+}
 
-instance NameTransition (Node3 prev) (Node4 (Node3 prev)) where
-  name arg1 src = Node4 src arg1
+template< typename... Tail >
+auto end_transition(  const& src ) {
+  name const& x1 = src->head.arg1;
+  start const& content = start( new helloWithName( x1 ) );
+  State< Node1, Tail... > const& tail = src->tail->tail;
+  return end_transition( State< Node2, Node1, Tail... >::make( Node2( content ), tail ) );
+}
 
-instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node3 (Node1 prev)) t where
-  end (Node3 prev) = end (Node2 prev (Begin))
+template< typename... Tail >
+auto name_transition( State< Node4, Tail... > const& src, string const& arg1 ) {
+  return State< Node5, Node4, Tail... >::make( Node5( arg1 ), src );
+}
 
-instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node4 (Node3 (Node1 prev))) t where
-  end (Node4 (Node3 prev) arg1) = end (Node2 prev (End arg1))
+template< typename... Tail >
+auto end_transition(  const& src ) {
+  start const& content = start( new simpleHello(  ) );
+  State< Node1, Tail... > const& tail = src->tail;
+  return end_transition( State< Node2, Node1, Tail... >::make( Node2( content ), tail ) );
+}
+
+template< typename... Tail >
+auto end_transition(  const& src ) {
+  string const& x1 = src->head.arg1;
+  name const& content = name( new nameString( x1 ) );
+  State< Node4, Tail... > const& tail = src->tail;
+  return end_transition( State< Node3, Node4, Tail... >::make( Node3( content ), tail ) );
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
