@@ -188,7 +188,7 @@ tellTypeGuards ::  (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) 
 tellTypeGuards nodes = do
   tellsLn $ "function startsWith" ++ (concat nodes) ++ "(arg: any): arg is AddUnknownRest<[" ++ (intercalate ", " nodes) ++ "]> {"
   tells "\treturn "
-  forMWithSep_ (tells "\t\t&& ") (zip [1 ..] nodes) $ \(i, node) -> do
+  forMWithSep_ (tells "\t\t&& ") (zip [0 ..] nodes) $ \(i, node) -> do
     tellsLn $ "arg[" ++ show i ++ "] && arg[" ++ show i ++ "]._" ++ node ++ "Brand"
   tellsLn "}"
   tellNewline
