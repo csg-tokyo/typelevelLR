@@ -69,12 +69,7 @@ type IsFinite<Tuple extends unknown[], Finite, Infinite> = {
     : never
 ]
 
-export abstract class Visitor {
-    abstract visitSimpleHello(host : SimpleHello): unknown
-    abstract visitHelloWithName(host : HelloWithName): unknown
-}
-
-class DefaultVisitor extends Visitor {
+export class Visitor {
     visitSimpleHello(host : SimpleHello) {
         console.log("hello")
     }
@@ -83,21 +78,21 @@ class DefaultVisitor extends Visitor {
     }
 }
 
-abstract class Start {
-    abstract accept(v? : Visitor): void
+interface Start {
+    accept(v? : Visitor): void
 }
 
-export class SimpleHello extends Start {
+export class SimpleHello implements Start {
     accept(v? : Visitor) {
         if (v) {
             v.visitSimpleHello(this)
         } else {
-            new DefaultVisitor().visitSimpleHello(this)
+            new Visitor().visitSimpleHello(this)
         }
     }
 }
 
-export class HelloWithName {
+export class HelloWithName implements Start {
     name : string
     constructor(name : string) {
         this.name = name
@@ -106,7 +101,7 @@ export class HelloWithName {
         if (v) {
             v.visitHelloWithName(this)
         } else {
-            new DefaultVisitor().visitHelloWithName(this)
+            new Visitor().visitHelloWithName(this)
         }
     }
 }
@@ -203,17 +198,3 @@ function isNode41(arg: any): arg is AddUnknownRest<[Node4, Node1]> {
 export function begin(): Fluent<[Node1]> {
     return new FluentImpl() as any
 }
-
-begin().hello().name("ok").end().accept(new DefaultVisitor)
-
-begin()
-    .hello()
-    .end()
-    .accept(new class visitor extends Visitor {
-        visitHelloWithName(h: HelloWithName) {
-            console.log(h.name)
-        }
-        visitSimpleHello() {
-            console.log("Simple")
-        }
-    }())
