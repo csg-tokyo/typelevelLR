@@ -238,12 +238,21 @@ type Fluent<Stack extends unknown[]> = (
 	{ hello: () => Fluent<AddUnknownRest<Prepend<Node4, Stack>>> } :
 	{}
 ) & (
+StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
+	{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
+	{}
 ) & (
 	StartsWith<Stack, [Node4]> extends 1 ?
 	{ name: (arg1: string) => Fluent<AddUnknownRest<Prepend<Node5, Stack>>> } :
 	{}
 ) & (
+StartsWith<Stack, [Node4, Node1]> extends 1 ?
+	{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
+	{}
 ) & (
+StartsWith<Stack, [Node5, Node4]> extends 1 ?
+	{ end: () => Fluent<AddUnknownRest<[Node3, Node4]>> } :
+	{}
 )
 
 ///////////////////////////////////////////////////////////////////////////////

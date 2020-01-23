@@ -197,7 +197,7 @@ tellTransitions = do
   forMWithSep_ (tellsLn ") & (") (lrTableTransitions table) $ \(src, t, action) -> do
     case action of
       Shift  dst  -> tellShiftFluentType  src t dst
-      Reduce rule -> return () -- tellReduceFluentType src t rule
+      Reduce rule -> tellReduceFluentType src t rule
       Accept      -> return () -- tellAcceptFluentType src
   tellsLn ")"
   -- fluent implementation
@@ -206,6 +206,22 @@ tellTransitions = do
   --     Shift  dst  -> tellShiftTransition  src t dst
   --     Reduce rule -> tellReduceTransition src t rule
   --     Accept      -> tellAcceptTransition src
+
+tellReduceFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                     => LRNode -> Terminal -> Rule -> m ()
+tellReduceFluentType src t rule = do
+  reduces <- reducesFrom_ src rule
+  forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
+    condition <- do path <- mapM nodeName_ srcPath
+                    return $ "StartsWith<Stack, [" ++ (intercalate ", " path) ++ "]> extends 1 ?"
+    dstType <- do path <- mapM nodeName_ dstPath
+                  return $ "Fluent<AddUnknownRest<[" ++ (intercalate ", " path) ++ "]>>"
+    tellsLn condition
+    let funName = terminalName t
+    let params = terminalParams t
+    let args = intercalate ", " ["arg" ++ show i ++ ": " ++ typ | (i, typ) <- zip [1 ..] params]
+    tellsLn $ "\t{ " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " } :"
+    tellsLn "\t{}"
 
 tellShiftFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                     => LRNode -> Terminal -> LRNode -> m ()
