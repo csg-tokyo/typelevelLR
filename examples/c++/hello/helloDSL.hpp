@@ -12,9 +12,10 @@ namespace helloDSL {
 
 // grammar definition
 
-// syntax helloDSL (Start) {
-//   SimpleHello : Start -> "hello()"
-//   HelloWithName : Start -> "hello()" "name(std::string)"
+// syntax helloDSL (start) {
+//   simpleHello : start -> "hello()"
+//   helloWithName : start -> "hello()" name
+//   nameString : name -> "name(string)"
 // }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,6 +33,17 @@ public:
   virtual void accept( ConstVisitor& ) const = 0;
 };
 
+class Name {
+public:
+  class Visitor;
+  class ConstVisitor;
+
+  virtual ~Name() noexcept;
+
+  virtual void accept( Visitor& ) = 0;
+  virtual void accept( ConstVisitor& ) const = 0;
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // AST node concrete classes
@@ -44,9 +56,18 @@ public:
   void accept( ConstVisitor& visitor ) const;
 };
 
-class HelloWithName : public Start, public std::tuple< std::string > {
+class HelloWithName : public Start, public std::tuple< std::shared_ptr< name > > {
 public:
-  explicit HelloWithName( std::string const& arg1 );
+  explicit HelloWithName( std::shared_ptr< name > const& arg1 );
+
+  void accept( Visitor& visitor );
+  void accept( ConstVisitor& visitor ) const;
+};
+
+
+class NameString : public Name, public std::tuple< string > {
+public:
+  explicit NameString( string const& arg1 );
 
   void accept( Visitor& visitor );
   void accept( ConstVisitor& visitor ) const;
@@ -68,11 +89,23 @@ public:
   virtual void visitHelloWithName( HelloWithName const& host ) = 0;
 };
 
+class Name::Visitor{
+public:
+  virtual void visitNameString( NameString& host ) = 0;
+};
+
+class Name::ConstVisitor{
+public:
+  virtual void visitNameString( NameString const& host ) = 0;
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator <<( std::ostream& out, Start const& self );
+std::ostream& operator <<( std::ostream& out, Name const& self );
 std::ostream& operator <<( std::ostream& out, SimpleHello const& self );
 std::ostream& operator <<( std::ostream& out, HelloWithName const& self );
+std::ostream& operator <<( std::ostream& out, NameString const& self );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -85,19 +118,25 @@ public:
 
 class Node2 {
 public:
-  std::shared_ptr< Start > arg1;
-  explicit Node2( std::shared_ptr< Start > const& arg1_ );
+  std::shared_ptr< start > arg1;
+  explicit Node2( std::shared_ptr< start > const& arg1_ );
 };
 
 class Node3 {
 public:
-  std::string arg1;
-  explicit Node3( std::string const& arg1_ );
+  std::shared_ptr< name > arg1;
+  explicit Node3( std::shared_ptr< name > const& arg1_ );
 };
 
 class Node4 {
 public:
   explicit Node4();
+};
+
+class Node5 {
+public:
+  string arg1;
+  explicit Node5( string const& arg1_ );
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,8 +164,8 @@ public:
 
 public:
   auto end();
+  auto name( string const& arg1 );
   auto hello();
-  auto name( std::string const& arg1 );
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,10 +173,10 @@ public:
 // transition rules
 
 template< typename... Stack >
-auto hello_transition( std::shared_ptr< State< Stack... > > const& src );
+auto name_transition( std::shared_ptr< State< Stack... > > const& src, string const& arg1 );
 
 template< typename... Stack >
-auto name_transition( std::shared_ptr< State< Stack... > > const& src, std::string const& arg1 );
+auto hello_transition( std::shared_ptr< State< Stack... > > const& src );
 
 template< typename... Stack >
 auto end_transition( std::shared_ptr< State< Stack... > > const& src );

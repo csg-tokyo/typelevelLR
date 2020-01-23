@@ -271,7 +271,7 @@ tellParsingStatePrototype = do
           forMWithSep_ (tells ", ") (zip [1 ..] params) $ \(i, param) -> do
             tells (param ++ " const& arg" ++ show i)
           tellsLn " );"
-    t             -> error ("invalid terminal symbol found -- " ++ show t)    
+    t             -> error ("invalid terminal symbol found -- " ++ show t)
   tellsLn "};"
 
 -------------------------------------------------------------------------------
@@ -533,7 +533,7 @@ tellReduceTransition src t rule = do
   reduces <- reducesFrom_ src rule
   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
     srcType <- do path <- mapM nodeName_ srcPath
-                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >") 
+                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
     dstType <- do path <- mapM nodeName_ dstPath
                   return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
     baseType <- do baseName <- nodeName_ (last dstPath)
