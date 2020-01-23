@@ -17,7 +17,7 @@ import Data.List               (isSuffixOf)
 
 main_ :: Flag "" '["hs", "haskell"]  "" "generate Haskell library" Bool ->
          Flag "" '["cpp"] "" "generate C++ library"     Bool ->
-         Flag "" '["typescript"] "" "generate TypeScript library"     Bool ->
+         Flag "" '["ts", "typescript"] "" "generate TypeScript library"     Bool ->
          Flag "" '["scala"] "" "generate Scala library" Bool ->
          Flag "d" '["dest"] "PATH" "destination directory path" (Maybe FilePath) ->
          Flag "s" '["source"] "PATH" "source directory path" (Def "." FilePath) ->
@@ -31,7 +31,7 @@ main_ genHs_ genCpp_ genTypeScript_ genScala_ dest_ source_ = liftIO $ do
   (dst, sources) <- expandSource (get dest_) (get source_)
 
   when (null actions) $ do
-    putStrLn "nothing to do: neither --hs nor --cpp nor --scala nor --typescript is given"
+    putStrLn "nothing to do: neither --hs nor --cpp nor --scala nor --ts is given"
     exitFailure
 
   forM_ ((,) <$> actions <*> sources) $ \(act, src) -> do
