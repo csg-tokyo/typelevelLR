@@ -247,71 +247,73 @@ tellInitialState = do
 
 utilScripts = "type Length<T extends unknown[]> = T['length']\n\
 \type Prepend<Elm, T extends unknown[]> = ((\n\
-\    arg: Elm,\n\
-\    ...rest: T\n\
+\\targ: Elm,\n\
+\\t...rest: T\n\
 \) => void) extends ((...args: infer T2) => void)\n\
-\    ? T2\n\
-\    : never\n\
+\\t? T2\n\
+\\t: never\n\
 \\n\
 \type Rest<T extends unknown[]> = ((\n\
-\    ...rest: T\n\
+\\t...rest: T\n\
 \) => void) extends ((head: unknown, ...args: infer T2) => void)\n\
-\    ? T2\n\
-\    : never\n\
+\\t? T2\n\
+\\t: never\n\
 \declare const None: unique symbol\n\
 \type None = typeof None\n\
 \type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]\n\
 \type AddUnknownRest<Tuple extends unknown[], Result extends unknown[] = [...unknown[]]> = {\n\
-\    empty: Result,\n\
-\    nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Next) => unknown)\n\
-\      ? Prepend<First, AddUnknownRest<Rest<Tuple>, Result>>\n\
-\      : never\n\
+\\tempty: Result,\n\
+\\tnonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Next) => unknown)\n\
+\\t\t? Prepend<First, AddUnknownRest<Rest<Tuple>, Result>>\n\
+\\t\t: never\n\
 \}[\n\
-\    Tuple extends [unknown, ...unknown[]]\n\
-\      ? 'nonEmpty'\n\
-\      : 'empty'\n\
+\\tTuple extends [unknown, ...unknown[]]\n\
+\\t\t? 'nonEmpty'\n\
+\\t\t: 'empty'\n\
 \]\n\
+\\n\
 \type CompareLength<Left extends any[], Right extends any[]> = {\n\
-\    fitBoth: 'equal'\n\
-\    fitLeft: 'shorterLeft'\n\
-\    fitRight: 'shorterRight'\n\
-\    unfit: ((..._: Left) => any) extends ((_: any, ..._1: infer LeftRest) => any) ?\n\
-\         ((..._: Right) => any) extends ((_: any, ..._1: infer RightRest) => any) ?\n\
-\            CompareLength<LeftRest, RightRest>\n\
-\        : never\n\
-\        : never\n\
+\\tfitBoth: 'equal'\n\
+\\tfitLeft: 'shorterLeft'\n\
+\\tfitRight: 'shorterRight'\n\
+\\tunfit: ((..._: Left) => any) extends ((_: any, ..._1: infer LeftRest) => any) ?\n\
+\\t\t ((..._: Right) => any) extends ((_: any, ..._1: infer RightRest) => any) ?\n\
+\\t\t\t\t\tCompareLength<LeftRest, RightRest>\n\
+\\t\t\t: never\n\
+\\t\t\t: never\n\
 \}[\n\
-\    Left['length'] extends Right['length'] ? 'fitBoth' :\n\
-\    Left extends [] ? 'fitLeft' :\n\
-\    Right extends [] ? 'fitRight' :\n\
-\    'unfit'\n\
+\\tLeft['length'] extends Right['length'] ? 'fitBoth' :\n\
+\\tLeft extends [] ? 'fitLeft' :\n\
+\\tRight extends [] ? 'fitRight' :\n\
+\\t'unfit'\n\
 \]\n\
+\\n\
 \type StartsWith<Tuple extends unknown[], Tuple2 extends unknown[]> = {\n\
-\    false: 0,\n\
-\    empty: 1,\n\
-\    nonEmpty: Head<Tuple> extends Head<Tuple2>\n\
-\        ? StartsWith<Rest<Tuple>, Rest<Tuple2>>\n\
-\        : 0\n\
+\\tfalse: 0,\n\
+\\tempty: 1,\n\
+\\tnonEmpty: Head<Tuple> extends Head<Tuple2>\n\
+\\t\t? StartsWith<Rest<Tuple>, Rest<Tuple2>>\n\
+\\t\t: 0\n\
 \}[\n\
-\    CompareLength<Tuple, Tuple2> extends 'shorterLeft'\n\
-\        ? 'false'\n\
-\        : IsFinite<Tuple2, 'finite', 'infinite'> extends 'infinite'\n\
-\            ? 'false'\n\
-\            : Tuple2 extends [unknown, ...unknown[]]\n\
-\                ? 'nonEmpty'\n\
-\                : 'empty'\n\
+\\tCompareLength<Tuple, Tuple2> extends 'shorterLeft'\n\
+\\t\t? 'false'\n\
+\\t\t: IsFinite<Tuple2, 'finite', 'infinite'> extends 'infinite'\n\
+\\t\t\t? 'false'\n\
+\\t\t\t: Tuple2 extends [unknown, ...unknown[]]\n\
+\\t\t\t\t? 'nonEmpty'\n\
+\\t\t\t\t: 'empty'\n\
 \]\n\
 \type IsFinite<Tuple extends unknown[], Finite, Infinite> = {\n\
-\    empty: Finite\n\
-\    nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Rest) => unknown)\n\
-\      ? IsFinite<Rest, Finite, Infinite>\n\
-\      : never\n\
-\    infinite: Infinite\n\
+\\tempty: Finite\n\
+\\tnonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Rest) => unknown)\n\
+\\t\t? IsFinite<Rest, Finite, Infinite>\n\
+\\t\t: never\n\
+\\tinfinite: Infinite\n\
 \}[\n\
-\    Tuple extends [] ? 'empty' :\n\
-\    Tuple extends (infer Element)[] ?\n\
-\    Element[] extends Tuple ?\n\
-\      'infinite'\n\
-\    : 'nonEmpty'\n\
-\    : never\n\
+\\tTuple extends [] ? 'empty' :\n\
+\\tTuple extends (infer Element)[] ?\n\
+\\tElement[] extends Tuple ?\n\
+\\t\t'infinite'\n\
+\\t: 'nonEmpty'\n\
+\\t: never\n\
 \]"

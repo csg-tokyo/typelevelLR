@@ -12,73 +12,75 @@
 
 type Length<T extends unknown[]> = T['length']
 type Prepend<Elm, T extends unknown[]> = ((
-    arg: Elm,
-    ...rest: T
+	arg: Elm,
+	...rest: T
 ) => void) extends ((...args: infer T2) => void)
-    ? T2
-    : never
+	? T2
+	: never
 
 type Rest<T extends unknown[]> = ((
-    ...rest: T
+	...rest: T
 ) => void) extends ((head: unknown, ...args: infer T2) => void)
-    ? T2
-    : never
+	? T2
+	: never
 declare const None: unique symbol
 type None = typeof None
 type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]
 type AddUnknownRest<Tuple extends unknown[], Result extends unknown[] = [...unknown[]]> = {
-    empty: Result,
-    nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Next) => unknown)
-      ? Prepend<First, AddUnknownRest<Rest<Tuple>, Result>>
-      : never
+	empty: Result,
+	nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Next) => unknown)
+		? Prepend<First, AddUnknownRest<Rest<Tuple>, Result>>
+		: never
 }[
-    Tuple extends [unknown, ...unknown[]]
-      ? 'nonEmpty'
-      : 'empty'
+	Tuple extends [unknown, ...unknown[]]
+		? 'nonEmpty'
+		: 'empty'
 ]
+
 type CompareLength<Left extends any[], Right extends any[]> = {
-    fitBoth: 'equal'
-    fitLeft: 'shorterLeft'
-    fitRight: 'shorterRight'
-    unfit: ((..._: Left) => any) extends ((_: any, ..._1: infer LeftRest) => any) ?
-         ((..._: Right) => any) extends ((_: any, ..._1: infer RightRest) => any) ?
-            CompareLength<LeftRest, RightRest>
-        : never
-        : never
+	fitBoth: 'equal'
+	fitLeft: 'shorterLeft'
+	fitRight: 'shorterRight'
+	unfit: ((..._: Left) => any) extends ((_: any, ..._1: infer LeftRest) => any) ?
+		 ((..._: Right) => any) extends ((_: any, ..._1: infer RightRest) => any) ?
+					CompareLength<LeftRest, RightRest>
+			: never
+			: never
 }[
-    Left['length'] extends Right['length'] ? 'fitBoth' :
-    Left extends [] ? 'fitLeft' :
-    Right extends [] ? 'fitRight' :
-    'unfit'
+	Left['length'] extends Right['length'] ? 'fitBoth' :
+	Left extends [] ? 'fitLeft' :
+	Right extends [] ? 'fitRight' :
+	'unfit'
 ]
+
 type StartsWith<Tuple extends unknown[], Tuple2 extends unknown[]> = {
-    false: 0,
-    empty: 1,
-    nonEmpty: Head<Tuple> extends Head<Tuple2>
-        ? StartsWith<Rest<Tuple>, Rest<Tuple2>>
-        : 0
+	false: 0,
+	empty: 1,
+	nonEmpty: Head<Tuple> extends Head<Tuple2>
+		? StartsWith<Rest<Tuple>, Rest<Tuple2>>
+		: 0
 }[
-    CompareLength<Tuple, Tuple2> extends 'shorterLeft'
-        ? 'false'
-        : IsFinite<Tuple2, 'finite', 'infinite'> extends 'infinite'
-            ? 'false'
-            : Tuple2 extends [unknown, ...unknown[]]
-                ? 'nonEmpty'
-                : 'empty'
+	CompareLength<Tuple, Tuple2> extends 'shorterLeft'
+		? 'false'
+		: IsFinite<Tuple2, 'finite', 'infinite'> extends 'infinite'
+			? 'false'
+			: Tuple2 extends [unknown, ...unknown[]]
+				? 'nonEmpty'
+				: 'empty'
 ]
 type IsFinite<Tuple extends unknown[], Finite, Infinite> = {
-    empty: Finite
-    nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Rest) => unknown)
-      ? IsFinite<Rest, Finite, Infinite>
-      : never
-    infinite: Infinite
+	empty: Finite
+	nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Rest) => unknown)
+		? IsFinite<Rest, Finite, Infinite>
+		: never
+	infinite: Infinite
 }[
-    Tuple extends [] ? 'empty' :
-    Tuple extends (infer Element)[] ?
-    Element[] extends Tuple ?
-      'infinite'
-    : 'nonEmpty'
-    : never
+	Tuple extends [] ? 'empty' :
+	Tuple extends (infer Element)[] ?
+	Element[] extends Tuple ?
+		'infinite'
+	: 'nonEmpty'
+	: never
 ]
 
 ///////////////////////////////////////////////////////////////////////////////
