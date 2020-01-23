@@ -69,7 +69,12 @@ type IsFinite<Tuple extends unknown[], Finite, Infinite> = {
     : never
 ]
 
-export class Visitor {
+interface Visitor {
+    visitSimpleHello(host : SimpleHello): void
+    visitHelloWithName(host : HelloWithName): void
+}
+
+export class DefaultVisitor implements Visitor {
     visitSimpleHello(host : SimpleHello) {
         console.log("hello")
     }
@@ -87,7 +92,7 @@ export class SimpleHello implements Start {
         if (v) {
             v.visitSimpleHello(this)
         } else {
-            new Visitor().visitSimpleHello(this)
+            new DefaultVisitor().visitSimpleHello(this)
         }
     }
 }
@@ -101,7 +106,7 @@ export class HelloWithName implements Start {
         if (v) {
             v.visitHelloWithName(this)
         } else {
-            new Visitor().visitHelloWithName(this)
+            new DefaultVisitor().visitHelloWithName(this)
         }
     }
 }
