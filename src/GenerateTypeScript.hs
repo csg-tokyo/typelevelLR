@@ -12,6 +12,7 @@ import CodeGenerateEnv
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.List             (intercalate)
 
 import Data.Monoid           (Endo())
 import Control.Monad         (forM_)
@@ -115,14 +116,26 @@ tellAutomatonStates = do
   nodes <- nodes_
   tellsLn "// automaton states"
   tellNewline
+  tells "type Node = "
+  tellsLn $ intercalate " | " $ map (\(node, name, typ) -> name) nodes
+  tellNewline
   forMWithSep_ tellNewline nodes $ \(node, name, typ) -> do
-    tells ("data " ++ name ++ " prev = " ++ name ++ " prev")
-    case typ of
-      NonTerminalSymbol nt -> tells " " >> tells (pascalCase (nonTerminalName nt))
-      TerminalSymbol (UserTerminal name params) -> do
-        forM_ params (\param -> tells " " >> tells param)
-      _       -> return ()
-    tellNewline
+    tellsLn $ "class " ++ name ++ " {"
+    tellsLn $ "\tprivate _" ++ name ++ "Brand: boolean = true"
+    params <- nodeParams_ node
+    case params of
+      [] -> return ()
+      _  -> do
+        forM_ (zip [1 ..] params) $ \(i, param) -> do
+          tellsLn ("\targ" ++ show i ++ " : " ++ param)
+        tells ("\tconstructor(")
+        forMWithSep_ (tells ", ") (zip [1 ..] params) $ \(i, param) -> do
+          tells ("arg" ++ show i ++ " : " ++ param)
+        tellsLn ") {"
+        forM_ (zip [1 ..] params) $ \(i, param) -> do
+          tellsLn ("\t\tthis.arg" ++ show i ++ " = " ++ "arg" ++ show i)
+        tellsLn "\t}"
+    tellsLn "}"
 
 -------------------------------------------------------------------------------
 
