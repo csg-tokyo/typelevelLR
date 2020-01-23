@@ -1,3 +1,15 @@
+
+///////////////////////////////////////////////////////////////////////////////
+
+// grammar definition
+
+// begin : Start -> "hello()"
+// end : Start -> "hello()" "name(std::string)"
+
+///////////////////////////////////////////////////////////////////////////////
+
+// util scripts
+
 type Length<T extends unknown[]> = T['length']
 type Prepend<Elm, T extends unknown[]> = ((
     arg: Elm,
@@ -40,7 +52,7 @@ type CompareLength<Left extends any[], Right extends any[]> = {
     'unfit'
 ]
 type StartsWith<Tuple extends unknown[], Tuple2 extends unknown[]> = {
-    false: 0
+    false: 0,
     empty: 1,
     nonEmpty: Head<Tuple> extends Head<Tuple2>
         ? StartsWith<Rest<Tuple>, Rest<Tuple2>>
@@ -69,151 +81,81 @@ type IsFinite<Tuple extends unknown[], Finite, Infinite> = {
     : never
 ]
 
-export abstract class Visitor {
-    abstract visitSimpleHello(host : SimpleHello): unknown
-    abstract visitHelloWithName(host : HelloWithName): unknown
-}
+///////////////////////////////////////////////////////////////////////////////
 
-class DefaultVisitor extends Visitor {
-    visitSimpleHello(host : SimpleHello) {
-        console.log("hello")
-    }
-    visitHelloWithName(host : HelloWithName) {
-        console.log("hello", host.name)
-    }
-}
+// AST nodes
 
-abstract class Start {
-    abstract accept(v? : Visitor): void
-}
+data Start
+  = Begin
+  | End std::string
+  deriving (Show)
 
-export class SimpleHello extends Start {
-    accept(v? : Visitor) {
-        if (v) {
-            v.visitSimpleHello(this)
-        } else {
-            new DefaultVisitor().visitSimpleHello(this)
-        }
-    }
-}
+///////////////////////////////////////////////////////////////////////////////
 
-export class HelloWithName {
-    name : string
-    constructor(name : string) {
-        this.name = name
-    }
-    accept(v? : Visitor) {
-        if (v) {
-            v.visitHelloWithName(this)
-        } else {
-            new DefaultVisitor().visitHelloWithName(this)
-        }
-    }
-}
+-- terminal symbols
+
+class HelloTransition s t | s -> t where
+  hello :: s -> t
+
+class NameTransition s t | s -> t where
+  name :: std::string -> s -> t
+
+class EndTransition s t | s -> t where
+  end :: s -> t
+
+///////////////////////////////////////////////////////////////////////////////
+
+// automaton states
 
 type Node = Node1 | Node2 | Node3 | Node4
+
 class Node1 {
-    private _node1Brand: boolean = true
+	private _Node1Brand: boolean = true
 }
+
 class Node2 {
-    private _node2Brand: boolean = true
-    arg1 : Start
-    constructor(arg1 : Start) {
-        this.arg1 = arg1
-    }
+	private _Node2Brand: boolean = true
+	arg1 : Start
+	constructor(arg1 : Start) {
+		this.arg1 = arg1
+	}
 }
+
 class Node3 {
-    private _node3Brand: boolean = true
-    arg1 : string
-    constructor(arg1 : string) {
-        this.arg1 = arg1
-    }
+	private _Node3Brand: boolean = true
 }
+
 class Node4 {
-    private _node4Brand: boolean = true
+	private _Node4Brand: boolean = true
+	arg1 : std::string
+	constructor(arg1 : std::string) {
+		this.arg1 = arg1
+	}
 }
 
-type Fluent<Stack extends unknown[]> = (
-    StartsWith<Stack, [Node2]> extends 1 ?
-    { end: () => Start } :
-    {}
-) & (
-    StartsWith<Stack, [Node1]> extends 1 ?
-    { hello: () => Fluent<AddUnknownRest<[Node4, Node1]>> } :
-    {}
-) & (
-    StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
-    { end: () => Start } :
-    {}
-) & (
-    StartsWith<Stack, [Node4]> extends 1 ?
-    { name: (arg1: string) => Fluent<AddUnknownRest<Prepend<Node3, Stack>>> } :
-    {}
-) & (
-    StartsWith<Stack, [Node4, Node1]> extends 1 ?
-    { end: () => Start } :
-    {}
-)
+///////////////////////////////////////////////////////////////////////////////
 
-class FluentImpl {
-    stack: Node[] = [new Node1]
-    end = () => {
-        if (isNode2(this.stack)) {
-            return this.stack[0].arg1
-        }
-        if (isNode341(this.stack)) {
-            const x1 = this.stack[0].arg1
-            const content = new HelloWithName(x1)
-            const tail = this.stack.slice(2)
-            this.stack = [new Node2(content), ...tail]
-            return this.end()
-        }
-        if (isNode41(this.stack)) {
-            const content = new SimpleHello
-            const tail = this.stack.slice(1)
-            this.stack = [new Node2(content), ...tail]
-            return this.end()
-        }
-    }
-    hello = () => {
-        this.stack = [new Node4, ...this.stack]
-        return this
-    }
-    name = (u: unknown) => {
-        this.stack = [new Node3(u as string), ...this.stack]
-        return this
-    }
-}
+-- transition instances
 
-function isNode2(arg: any): arg is AddUnknownRest<[Node2]> {
-    return arg[0] && arg[0]._node2Brand
-}
+instance EndTransition (Node2 prev) Start where
+  end (Node2 _ arg1) = arg1
 
-function isNode341(arg: any): arg is AddUnknownRest<[Node3, Node4, Node1]> {
-    return arg[0] && arg[0]._node3Brand
-        && arg[1] && arg[1]._node4Brand
-        && arg[2] && arg[2]._node1Brand
-}
+instance HelloTransition (Node1 prev) (Node3 (Node1 prev)) where
+  hello src = Node3 src
 
-function isNode41(arg: any): arg is AddUnknownRest<[Node4, Node1]> {
-    return arg[0] && arg[0]._node4Brand
-        && arg[1] && arg[1]._node1Brand
-}
+instance NameTransition (Node3 prev) (Node4 (Node3 prev)) where
+  name arg1 src = Node4 src arg1
 
-export function begin(): Fluent<[Node1]> {
-    return new FluentImpl() as any
-}
+instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node3 (Node1 prev)) t where
+  end (Node3 prev) = end (Node2 prev (Begin))
 
-begin().hello().name("ok").end().accept(new DefaultVisitor)
+instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node4 (Node3 (Node1 prev))) t where
+  end (Node4 (Node3 prev) arg1) = end (Node2 prev (End arg1))
 
-begin()
-    .hello()
-    .end()
-    .accept(new class visitor extends Visitor {
-        visitHelloWithName(h: HelloWithName) {
-            console.log(h.name)
-        }
-        visitSimpleHello() {
-            console.log("Simple")
-        }
-    }())
+///////////////////////////////////////////////////////////////////////////////
+
+begin :: Node1 ()
+begin = Node1 ()
+
+///////////////////////////////////////////////////////////////////////////////
+
