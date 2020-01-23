@@ -239,8 +239,9 @@ tellInitialState :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
 tellInitialState = do
   automaton <- automaton_
   startName <- pascalCase <$> nodeName_ (lrAutomatonStart automaton)
-  tellsLn ("begin :: " ++ startName ++ " ()")
-  tellsLn ("begin = " ++ startName ++ " ()")
+  tellsLn $ "export function begin(): Fluent<[" ++ startName ++ "]> {"
+  tellsLn $ "\treturn new FluentImpl() as any"
+  tellsLn "}"
 
 -------------------------------------------------------------------------------
 
