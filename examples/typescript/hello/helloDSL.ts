@@ -115,6 +115,20 @@ export class End implements Start {
 	}
 }
 
+interface Visitor {
+	visitBegin(host : Begin): void
+	visitEnd(host : End): void
+}
+
+export class DefaultVisitor implements Visitor {
+	visitBegin(host : Begin) {
+		console.log("hello")
+	}
+	visitEnd(host : End) {
+		console.log("name", host.arg1)
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 // terminal symbols

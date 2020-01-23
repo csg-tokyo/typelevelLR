@@ -115,6 +115,31 @@ tellASTDefinitions = do
       tellsLn "\t}"
       tellsLn "}"
 
+  tellNewline
+
+  -- AST visitors
+  forMWithSep_ tellNewline (syntaxNonTerminals syntax) $ \nt -> do
+    tellsLn "interface Visitor {"
+    forM_ (syntaxRules syntax nt) $ \rule -> do
+      let className = pascalCase (ruleName rule)
+      tellsLn $ "\tvisit" ++ className ++ "(host : " ++ className ++ "): void"
+    tellsLn "}"
+
+    tellNewline
+
+    tellsLn "export class DefaultVisitor implements Visitor {"
+    forM_ (zip (syntaxTerminals syntax) (syntaxRules syntax nt)) $ \case
+      (UserTerminal name params, rule) -> do
+        let className = pascalCase (ruleName rule)
+        tellsLn $ "\tvisit" ++ className ++ "(host : " ++ className ++ ") {"
+        tells $ "\t\tconsole.log(\"" ++ name ++ "\""
+        forM_ (zip [1 ..] params) $ \(i, param) -> do
+          tells (", host.arg" ++ show i)
+        tellsLn ")"
+        tellsLn "\t}"
+      t -> error ("invalid terminal symbol found -- " ++ show t)
+    tellsLn "}"
+
 -------------------------------------------------------------------------------
 
 tellTerminalMethodDefinitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) =>
