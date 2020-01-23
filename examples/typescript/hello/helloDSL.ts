@@ -199,14 +199,28 @@ class Node5 {
 
 // transitions
 
+function startsWithNode2(arg: any): arg is AddUnknownRest<[Node2]> {
+	return arg[1] && arg[1]._Node2Brand
+}
+
 template< typename... Tail >
 auto end_transition( std::shared_ptr< State< Node2, Tail... > > const& src ) {
   return src->head.arg1;
 }
 
+function startsWithNode1(arg: any): arg is AddUnknownRest<[Node1]> {
+	return arg[1] && arg[1]._Node1Brand
+}
+
 template< typename... Tail >
 auto hello_transition( State< Node1, Tail... > const& src ) {
   return State< Node4, Node1, Tail... >::make( Node4(  ), src );
+}
+
+function startsWithNode3Node4Node1(arg: any): arg is AddUnknownRest<[Node3, Node4, Node1]> {
+	return arg[1] && arg[1]._Node3Brand
+		&& arg[2] && arg[2]._Node4Brand
+		&& arg[3] && arg[3]._Node1Brand
 }
 
 template< typename... Tail >
@@ -217,9 +231,18 @@ auto end_transition(  const& src ) {
   return end_transition( State< Node2, Node1, Tail... >::make( Node2( content ), tail ) );
 }
 
+function startsWithNode4(arg: any): arg is AddUnknownRest<[Node4]> {
+	return arg[1] && arg[1]._Node4Brand
+}
+
 template< typename... Tail >
 auto name_transition( State< Node4, Tail... > const& src, string const& arg1 ) {
   return State< Node5, Node4, Tail... >::make( Node5( arg1 ), src );
+}
+
+function startsWithNode4Node1(arg: any): arg is AddUnknownRest<[Node4, Node1]> {
+	return arg[1] && arg[1]._Node4Brand
+		&& arg[2] && arg[2]._Node1Brand
 }
 
 template< typename... Tail >
@@ -227,6 +250,11 @@ auto end_transition(  const& src ) {
   start const& content = start( new simpleHello(  ) );
   State< Node1, Tail... > const& tail = src->tail;
   return end_transition( State< Node2, Node1, Tail... >::make( Node2( content ), tail ) );
+}
+
+function startsWithNode5Node4(arg: any): arg is AddUnknownRest<[Node5, Node4]> {
+	return arg[1] && arg[1]._Node5Brand
+		&& arg[2] && arg[2]._Node4Brand
 }
 
 template< typename... Tail >
