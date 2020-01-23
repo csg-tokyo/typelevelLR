@@ -4,7 +4,7 @@
 // grammar definition
 
 // begin : Start -> "hello()"
-// end : Start -> "hello()" "name(std::string)"
+// end : Start -> "hello()" "name(string)"
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -85,20 +85,43 @@ type IsFinite<Tuple extends unknown[], Finite, Infinite> = {
 
 // AST nodes
 
-data Start
-  = Begin
-  | End std::string
-  deriving (Show)
+interface Start {
+	abstract accept(v? : Visitor): void
+}
+
+export class Begin implements Start {
+	accept(v? : Visitor) {
+		if (v) {
+			v.visitBegin(this)
+		} else {
+			new DefaultVisitor().visitBegin(this)
+		}
+	}
+}
+
+export class End implements Start {
+	arg1 : string
+	constructor(arg1 : string	) {
+		this.arg1 = arg1
+	}
+	accept(v? : Visitor) {
+		if (v) {
+			v.visitEnd(this)
+		} else {
+			new DefaultVisitor().visitEnd(this)
+		}
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
--- terminal symbols
+// terminal symbols
 
 class HelloTransition s t | s -> t where
   hello :: s -> t
 
 class NameTransition s t | s -> t where
-  name :: std::string -> s -> t
+  name :: string -> s -> t
 
 class EndTransition s t | s -> t where
   end :: s -> t
@@ -127,8 +150,8 @@ class Node3 {
 
 class Node4 {
 	private _Node4Brand: boolean = true
-	arg1 : std::string
-	constructor(arg1 : std::string) {
+	arg1 : string
+	constructor(arg1 : string) {
 		this.arg1 = arg1
 	}
 }

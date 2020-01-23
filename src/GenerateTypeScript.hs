@@ -79,15 +79,41 @@ tellASTDefinitions = do
   syntax <- syntax_
   tellsLn "// AST nodes"
   tellNewline
+  -- AST abstract classes
   forMWithSep_ tellNewline (syntaxNonTerminals syntax) $ \nt -> do
-    tellsLn ("data " ++ pascalCase (nonTerminalName nt))
-    forM_ (zip ("  = " : repeat "  | ") (syntaxRules syntax nt)) $ \(header, rule) -> do
-      tells header
-      tells (pascalCase (ruleName rule))
-      forM_ (concat (ruleParams rule)) $ \param ->
-        tells " " >> tells param
-      tellNewline
-    tellsLn "  deriving (Show)"
+    tellsLn $ "interface " ++ pascalCase (nonTerminalName nt) ++ " {"
+    tellsLn "\tabstract accept(v? : Visitor): void"
+    tellsLn "}"
+
+  tellNewline
+
+  -- AST concrete classes
+  forMWithSep_ (tellNewline) (syntaxNonTerminals syntax) $ \nt -> do
+    forMWithSep_ (tellNewline) (syntaxRules syntax nt) $ \rule -> do
+      let className = pascalCase (ruleName rule)
+      let args = [(typ, "arg" ++ show i) |
+                  (i, typ) <- zip [1 ..] (concat (ruleParams rule))]
+      tellsLn $ "export class " ++ className ++ " implements " ++ pascalCase (nonTerminalName nt) ++ " {"
+      forM_ args $ \(argType, argName) -> do
+        tellsLn $ "\t" ++ argName ++ " : " ++ argType
+      case args of
+        [] -> return ()
+        _  -> do
+          tells "\tconstructor("
+          forMWithSep_ (tells ", ") args $ \(argType, argName) -> do
+            tells $ argName ++ " : " ++ argType
+          tellsLn "\t) {"
+          forM_ args $ \(argType, argName) -> do
+            tellsLn $ "\t\tthis." ++ argName ++ " = " ++ argName
+          tellsLn "\t}"
+      tellsLn "\taccept(v? : Visitor) {"
+      tellsLn "\t\tif (v) {"
+      tellsLn $ "\t\t\tv.visit" ++ className ++ "(this)"
+      tellsLn "\t\t} else {"
+      tellsLn $ "\t\t\tnew DefaultVisitor().visit" ++ className ++ "(this)"
+      tellsLn "\t\t}"
+      tellsLn "\t}"
+      tellsLn "}"
 
 -------------------------------------------------------------------------------
 
@@ -95,7 +121,7 @@ tellTerminalMethodDefinitions :: (MonadWriter (Endo String) m, MonadReader CodeG
                                  m ()
 tellTerminalMethodDefinitions = do
   syntax <- syntax_
-  tellsLn "-- terminal symbols"
+  tellsLn "// terminal symbols"
   tellNewline
   forMWithSep_ tellNewline (syntaxTerminals syntax) $ \case
     UserTerminal name params -> do
