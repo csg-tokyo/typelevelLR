@@ -81,7 +81,7 @@ tellASTDefinitions = do
   -- AST abstract classes
   forMWithSep_ tellNewline (syntaxNonTerminals syntax) $ \nt -> do
     tellsLn $ "interface " ++ pascalCase (nonTerminalName nt) ++ " {"
-    tellsLn "\tabstract accept(v? : Visitor): void"
+    tellsLn "\taccept(v? : Visitor): void"
     tellsLn "}"
 
   tellNewline
@@ -198,7 +198,7 @@ tellTransitions = do
     case action of
       Shift  dst  -> tellShiftFluentType  src t dst
       Reduce rule -> tellReduceFluentType src t rule
-      Accept      -> return () -- tellAcceptFluentType src
+      Accept      -> tellAcceptFluentType src
   tellsLn ")"
   -- fluent implementation
   -- forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> do
@@ -213,15 +213,15 @@ tellReduceFluentType src t rule = do
   reduces <- reducesFrom_ src rule
   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
     condition <- do path <- mapM nodeName_ srcPath
-                    return $ "StartsWith<Stack, [" ++ (intercalate ", " path) ++ "]> extends 1 ?"
+                    return $ "\tStartsWith<Stack, [" ++ (intercalate ", " path) ++ "]> extends 1 ?"
     dstType <- do path <- mapM nodeName_ dstPath
                   return $ "Fluent<AddUnknownRest<[" ++ (intercalate ", " path) ++ "]>>"
     tellsLn condition
     let funName = terminalName t
     let params = terminalParams t
     let args = intercalate ", " ["arg" ++ show i ++ ": " ++ typ | (i, typ) <- zip [1 ..] params]
-    tellsLn $ "\t{ " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " } :"
-    tellsLn "\t{}"
+    tellsLn $ "\t\t{ " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " } :"
+    tellsLn "\t\t{}"
 
 tellShiftFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                     => LRNode -> Terminal -> LRNode -> m ()
@@ -233,8 +233,16 @@ tellShiftFluentType src t dst = do
   let dstType = "Fluent<AddUnknownRest<Prepend<" ++ dstName ++ ", Stack>>>"
   let params = terminalParams t
   let args = intercalate ", " ["arg" ++ show i ++ ": " ++ typ | (i, typ) <- zip [1 ..] params]
-  tellsLn $ "\t{ " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " } :"
-  tellsLn "\t{}"
+  tellsLn $ "\t\t{ " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " } :"
+  tellsLn "\t\t{}"
+
+tellAcceptFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+                     => LRNode -> m ()
+tellAcceptFluentType src = do
+  srcName <- nodeName_ src
+  tellsLn $ "\tStartsWith<Stack, [" ++ srcName ++ "]> extends 1 ?"
+  tellsLn $ "\t\t{ end: () => " ++ srcName ++ "['arg1']" ++ " } :"
+  tellsLn "\t\t{}"
 
 tellTypeGuards ::  (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) => [String] -> m ()
 tellTypeGuards nodes = do

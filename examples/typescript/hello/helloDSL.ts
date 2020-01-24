@@ -89,11 +89,11 @@ type IsFinite<Tuple extends unknown[], Finite, Infinite> = {
 // AST nodes
 
 interface Start {
-	abstract accept(v? : Visitor): void
+	accept(v? : Visitor): void
 }
 
 interface Name {
-	abstract accept(v? : Visitor): void
+	accept(v? : Visitor): void
 }
 
 export class SimpleHello implements Start {
@@ -233,26 +233,29 @@ function startsWithNode5Node4(arg: any): arg is AddUnknownRest<[Node5, Node4]> {
 }
 
 type Fluent<Stack extends unknown[]> = (
+	StartsWith<Stack, [Node2]> extends 1 ?
+		{ end: () => Node2['arg1'] } :
+		{}
 ) & (
 	StartsWith<Stack, [Node1]> extends 1 ?
-	{ hello: () => Fluent<AddUnknownRest<Prepend<Node4, Stack>>> } :
-	{}
+		{ hello: () => Fluent<AddUnknownRest<Prepend<Node4, Stack>>> } :
+		{}
 ) & (
-StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
-	{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
-	{}
+	StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
+		{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
+		{}
 ) & (
 	StartsWith<Stack, [Node4]> extends 1 ?
-	{ name: (arg1: string) => Fluent<AddUnknownRest<Prepend<Node5, Stack>>> } :
-	{}
+		{ name: (arg1: string) => Fluent<AddUnknownRest<Prepend<Node5, Stack>>> } :
+		{}
 ) & (
-StartsWith<Stack, [Node4, Node1]> extends 1 ?
-	{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
-	{}
+	StartsWith<Stack, [Node4, Node1]> extends 1 ?
+		{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
+		{}
 ) & (
-StartsWith<Stack, [Node5, Node4]> extends 1 ?
-	{ end: () => Fluent<AddUnknownRest<[Node3, Node4]>> } :
-	{}
+	StartsWith<Stack, [Node5, Node4]> extends 1 ?
+		{ end: () => Fluent<AddUnknownRest<[Node3, Node4]>> } :
+		{}
 )
 
 ///////////////////////////////////////////////////////////////////////////////
