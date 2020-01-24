@@ -4,8 +4,12 @@ helloDSL.begin()
     .name("OK")
     .end()
     .accept(new class visitor extends helloDSL.DefaultVisitor {
-        visitHelloWithName(h: helloDSL.HelloWithName) {
-            console.log(h.name)
+        visitHelloWithName(h : helloDSL.HelloWithName) {
+            process.stdout.write("hello ")
+            h.arg1.accept(this)
+        }
+        visitNameString(h : helloDSL.NameString) {
+            console.log(h.arg1, "!")
         }
     }())
 
@@ -16,7 +20,6 @@ helloDSL.begin()
     .end()
     .accept(new class visitor extends helloDSL.DefaultVisitor {
         visitSimpleHello() {
-            console.log("Simple")
+            console.log("Simple Hello!")
         }
     }())
-
