@@ -40,11 +40,8 @@ data Name
 class NameTransition s t | s -> t where
   name :: String -> s -> t
 
-class BeginTransition s t | s -> t where
-  begin :: s -> t
-
-class EndTransition s t | s -> t where
-  end :: s -> t
+class HelloTransition s t | s -> t where
+  hello :: s -> t
 
 class EndTransition s t | s -> t where
   end :: s -> t
@@ -63,8 +60,6 @@ data Node4 prev = Node4 prev
 
 data Node5 prev = Node5 prev String
 
-data Node6 prev = Node6 prev
-
 -------------------------------------------------------------------------------
 
 -- transition instances
@@ -72,11 +67,8 @@ data Node6 prev = Node6 prev
 instance EndTransition (Node2 prev) Start where
   end (Node2 _ arg1) = arg1
 
-instance BeginTransition (Node1 prev) (Node6 (Node1 prev)) where
-  begin src = Node6 src
-
-instance EndTransition (Node1 prev) (Node4 (Node1 prev)) where
-  end src = Node4 src
+instance HelloTransition (Node1 prev) (Node4 (Node1 prev)) where
+  hello src = Node4 src
 
 instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node3 (Node4 (Node1 prev))) t where
   end (Node3 (Node4 prev) arg1) = end (Node2 prev (HelloWithName arg1))
@@ -84,11 +76,11 @@ instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node3 (Node4 (
 instance NameTransition (Node4 prev) (Node5 (Node4 prev)) where
   name arg1 src = Node5 src arg1
 
+instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node4 (Node1 prev)) t where
+  end (Node4 prev) = end (Node2 prev (SimpleHello))
+
 instance (EndTransition (Node3 (Node4 prev)) t) => EndTransition (Node5 (Node4 prev)) t where
   end (Node5 prev arg1) = end (Node3 prev (NameString arg1))
-
-instance (EndTransition (Node2 (Node1 prev)) t) => EndTransition (Node6 (Node1 prev)) t where
-  end (Node6 prev) = end (Node2 prev (SimpleHello))
 
 -------------------------------------------------------------------------------
 
