@@ -234,7 +234,7 @@ function startsWithNode5Node4(arg: any): arg is AddUnknownRest<[Node5, Node4]> {
 
 type Fluent<Stack extends unknown[]> = (
 	StartsWith<Stack, [Node2]> extends 1 ?
-		{ end: () => Start } :
+		{ end: () => Node2['arg1'] } :
 		{}
 ) & (
 	StartsWith<Stack, [Node1]> extends 1 ?
@@ -242,7 +242,7 @@ type Fluent<Stack extends unknown[]> = (
 		{}
 ) & (
 	StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
-		{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
+		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
 		{}
 ) & (
 	StartsWith<Stack, [Node4]> extends 1 ?
@@ -250,11 +250,11 @@ type Fluent<Stack extends unknown[]> = (
 		{}
 ) & (
 	StartsWith<Stack, [Node4, Node1]> extends 1 ?
-		{ end: () => Start } :
+		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
 		{}
 ) & (
 	StartsWith<Stack, [Node5, Node4]> extends 1 ?
-		{ end: () => Start } :
+		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node3, Node4, Node1]>>['end']> } :
 		{}
 )
 
@@ -301,4 +301,3 @@ export function begin(): Fluent<[Node1]> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-
