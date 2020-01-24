@@ -201,11 +201,33 @@ tellTransitions = do
       Accept      -> tellAcceptFluentType src
   tellsLn ")"
   -- fluent implementation
-  -- forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> do
-  --   case action of
-  --     Shift  dst  -> tellShiftTransition  src t dst
-  --     Reduce rule -> tellReduceTransition src t rule
-  --     Accept      -> tellAcceptTransition src
+  tellNewline
+  tellsLn "class FluentImpl {"
+  tellsLn "\tstack: Node[] = [new Node1]"
+  allFluentImpl <- mapM getFluentImpl $ lrTableTransitions table
+  forM_ (Map.toAscList (Map.fromListWith (++) allFluentImpl)) $ \(funName, impl) -> do
+    tellsLn $ "\t" ++ funName ++ " = (...a: any[]) => {"
+    tellsLn impl
+    tellsLn $ "\t}"
+  tellsLn $ "}"
+
+getFluentImpl :: (MonadReader CodeGenerateEnv m) 
+  => (LRNode, Terminal, LRAction) -> m (String, String)
+getFluentImpl (src, t, action) = do
+  case action of
+    Shift  dst  -> getShiftFluentImplList src t dst
+    Reduce rule -> return ("", "") -- getReduceFluentImpl src t rule
+    Accept      -> return ("", "") -- getAcceptFluentImpl src
+
+getShiftFluentImplList :: (MonadReader CodeGenerateEnv m) 
+  => LRNode -> Terminal -> LRNode -> m (String, String)
+getShiftFluentImplList src t dst = do
+  dstName <- pascalCase <$> nodeName_ dst
+  let params = terminalParams t
+  let args = intercalate ", " ["a[" ++ show i ++ "] as " ++ typ | (i, typ) <- zip [1 ..] params]
+  return (terminalName t, "\t\tthis.stack = [new " ++
+    dstName ++ "(" ++ args ++ "), ...this.stack]\n" ++
+    "\t\treturn this")
 
 tellReduceFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> Terminal -> Rule -> m ()
@@ -264,25 +286,9 @@ tellTypeGuards nodes = do
   tellsLn "}"
   tellNewline
 
-tellShiftTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
-                    => LRNode -> Terminal -> LRNode -> m ()
-tellShiftTransition src t dst = do
-  srcName <- pascalCase <$> nodeName_ src
-  dstName <- pascalCase <$> nodeName_ dst
-  let funName = terminalName t ++ "_transition"
-  let srcType = "State< " ++ srcName ++ ", Tail... >"
-  let dstType = "State< " ++ dstName ++ ", " ++ srcName ++ ", Tail... >"
-  let params = terminalParams t
-  let paramList = srcType ++ " const& src" ++ concat [", " ++ typ ++ " const& arg" ++ show i | (i, typ) <- zip [1 ..] params]
-  let dstArgs = intercalate ", " ["arg" ++ show i | (i, _) <- zip [1 ..] params]
-  tellsLn "template< typename... Tail >"
-  tellsLn ("auto " ++ funName ++ "( " ++ paramList ++ " ) {")
-  tellsLn ("  return " ++ dstType ++ "::make( " ++ dstName ++ "( " ++ dstArgs ++ " ), src );")
-  tellsLn "}"
-
-tellReduceTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+getReduceFluentImplList :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> Terminal -> Rule -> m ()
-tellReduceTransition src t rule = do
+getReduceFluentImplList src t rule = do
   reduces <- reducesFrom_ src rule
   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
     srcType <- do path <- mapM nodeName_ srcPath
@@ -311,9 +317,9 @@ tellReduceTransition src t rule = do
     tellsLn ("  return " ++ funName ++ "( " ++ dstType ++ "::make( " ++ dstName ++ "( content ), tail )" ++ concat [", arg" ++ show i | (i, _) <- zip [1 ..] params] ++ " );")
     tellsLn "}"
 
-tellAcceptTransition :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
+getAcceptFluentImplList :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> m ()
-tellAcceptTransition src = do
+getAcceptFluentImplList src = do
   srcName <- nodeName_ src
   let srcType = "State< " ++ srcName ++ ", Tail... >"
   [resultType] <- nodeParams_ src

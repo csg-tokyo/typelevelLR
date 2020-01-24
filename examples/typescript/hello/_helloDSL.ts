@@ -280,7 +280,7 @@ type Fluent<Stack extends unknown[]> = (
 
 class FluentImpl {
     stack: Node[] = [new Node1]
-    end = () => {
+    end = (...a: any[]) => {
         if (startsWithNode3Node4Node1(this.stack)) {
 			const x1 = this.stack[0].arg1
             const content = new HelloWithName(x1)
@@ -304,12 +304,12 @@ class FluentImpl {
 			return this.stack[0].arg1
 		}
     }
-    hello = () => {
+    hello = (...a: any[]) => {
         this.stack = [new Node4, ...this.stack]
         return this
     }
-    name = (u: unknown) => {
-        this.stack = [new Node5(u as string), ...this.stack]
+    name = (...a: any[]) => {
+        this.stack = [new Node5(a[0] as string), ...this.stack]
         return this
     }
 }
