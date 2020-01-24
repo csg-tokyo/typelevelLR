@@ -187,7 +187,7 @@ tellTransitions = do
       modify $ Set.insert [srcName]
     Reduce rule -> do
       reduces <- reducesFrom_ src rule
-      forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
+      forM_ reduces $ \(srcPath, dstPath) -> do
         path <- mapM nodeName_ srcPath
         modify $ Set.insert $ path
     Accept      -> do
