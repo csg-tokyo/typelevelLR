@@ -24,6 +24,12 @@ type Rest<T extends unknown[]> = ((
 ) => void) extends ((head: unknown, ...args: infer T2) => void)
 	? T2
 	: never
+type Tail<T extends any[]> = ((...args: T) => any) extends ((
+	_: infer First,
+	...rest: infer Rest
+) => any)
+t? T extends any[] ? Rest : ReadonlyArray<Rest[number]>
+t: []
 declare const None: unique symbol
 type None = typeof None
 type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]
@@ -233,29 +239,41 @@ function startsWithNode5Node4(arg: any): arg is AddUnknownRest<[Node5, Node4]> {
 }
 
 type Fluent<Stack extends unknown[]> = (
-	StartsWith<Stack, [Node2]> extends 1 ?
-		{ end: () => Node2['arg1'] } :
-		{}
+	{
+		0: {}
+		1: { end: () => Node2['arg1'] }
+	}[StartsWith<Stack, [Node2]>]
 ) & (
-	StartsWith<Stack, [Node1]> extends 1 ?
-		{ hello: () => Fluent<AddUnknownRest<Prepend<Node4, Stack>>> } :
-		{}
+	{
+		0: {}
+		1: { hello: () => Fluent<Prepend<Node4, Stack>> }
+	}[StartsWith<Stack, [Node1]>]
 ) & (
-	StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
-		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
-		{}
+	{
+		0: {}
+		1: Fluent<Prepend<Node2, Tail<Tail<Stack>>>>extends { end: infer F }
+			? { end: F }
+			: {}
+	}[StartsWith<Stack, [Node3, Node4, Node1]>]
 ) & (
-	StartsWith<Stack, [Node4]> extends 1 ?
-		{ name: (arg1: string) => Fluent<AddUnknownRest<Prepend<Node5, Stack>>> } :
-		{}
+	{
+		0: {}
+		1: { name: (arg1: string) => Fluent<Prepend<Node5, Stack>> }
+	}[StartsWith<Stack, [Node4]>]
 ) & (
-	StartsWith<Stack, [Node4, Node1]> extends 1 ?
-		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
-		{}
+	{
+		0: {}
+		1: Fluent<Prepend<Node2, Tail<Stack>>>extends { end: infer F }
+			? { end: F }
+			: {}
+	}[StartsWith<Stack, [Node4, Node1]>]
 ) & (
-	StartsWith<Stack, [Node5, Node4]> extends 1 ?
-		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node3, Node4]>>['end']> } :
-		{}
+	{
+		0: {}
+		1: Fluent<Prepend<Node3, Tail<Stack>>>extends { end: infer F }
+			? { end: F }
+			: {}
+	}[StartsWith<Stack, [Node5, Node4]>]
 )
 
 ///////////////////////////////////////////////////////////////////////////////

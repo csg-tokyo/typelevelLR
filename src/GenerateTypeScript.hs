@@ -212,37 +212,48 @@ tellReduceFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEn
 tellReduceFluentType src t rule = do
   reduces <- reducesFrom_ src rule
   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
+    dstName <- pascalCase <$> nodeName_ (head dstPath)
     condition <- do path <- mapM nodeName_ srcPath
-                    return $ "\tStartsWith<Stack, [" ++ (intercalate ", " path) ++ "]> extends 1 ?"
+                    return $ "[StartsWith<Stack, [" ++ (intercalate ", " path) ++ "]>]"
     dstType <- do path <- mapM nodeName_ dstPath
-                  return $ "Fluent<AddUnknownRest<[" ++ (intercalate ", " path) ++ "]>>"
-    tellsLn condition
+                  return $ "Fluent<Prepend<" ++ dstName ++ ", " ++
+                    concat ["Tail<" | _ <- tail srcPath] ++ "Stack" ++ 
+                    concat [">" | _ <- tail srcPath] ++ ">>"
     let funName = terminalName t
     let params = terminalParams t
     let args = intercalate ", " ["arg" ++ show i ++ ": " ++ typ | (i, typ) <- zip [1 ..] params]
-    tellsLn $ "\t\t{ " ++ funName ++ ": (" ++ args ++ ") => ReturnType<" ++ dstType ++ "['" ++ funName ++ "']> } :"
-    tellsLn "\t\t{}"
+    tellsLn "\t{"
+    tellsLn "\t\t0: {}"
+    tellsLn $ "\t\t1: " ++ dstType ++ "extends { " ++ funName ++ ": infer F }" -- ++ args ++ ") => ReturnType<" ++ dstType ++ "['" ++ funName ++ "']> }"
+    tellsLn $ "\t\t\t" ++ "? { " ++ funName ++ ": F }"
+    tellsLn "\t\t\t: {}"
+    tells "\t}"
+    tellsLn condition
 
 tellShiftFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                     => LRNode -> Terminal -> LRNode -> m ()
 tellShiftFluentType src t dst = do
   srcName <- pascalCase <$> nodeName_ src
-  tellsLn $ "\tStartsWith<Stack, [" ++ srcName ++ "]> extends 1 ?"
   dstName <- pascalCase <$> nodeName_ dst
   let funName = terminalName t
-  let dstType = "Fluent<AddUnknownRest<Prepend<" ++ dstName ++ ", Stack>>>"
+  let dstType = "Fluent<Prepend<" ++ dstName ++ ", Stack>>"
   let params = terminalParams t
   let args = intercalate ", " ["arg" ++ show i ++ ": " ++ typ | (i, typ) <- zip [1 ..] params]
-  tellsLn $ "\t\t{ " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " } :"
-  tellsLn "\t\t{}"
+  tellsLn "\t{"
+  tellsLn "\t\t0: {}"
+  tellsLn $ "\t\t1: { " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " }"
+  tells "\t}"
+  tellsLn $ "[StartsWith<Stack, [" ++ srcName ++ "]>]"
 
 tellAcceptFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> m ()
 tellAcceptFluentType src = do
   srcName <- nodeName_ src
-  tellsLn $ "\tStartsWith<Stack, [" ++ srcName ++ "]> extends 1 ?"
-  tellsLn $ "\t\t{ end: () => " ++ srcName ++ "['arg1']" ++ " } :"
-  tellsLn "\t\t{}"
+  tellsLn "\t{"
+  tellsLn "\t\t0: {}"
+  tellsLn $ "\t\t1: { end: () => " ++ srcName ++ "['arg1']" ++ " }"
+  tells "\t}"
+  tellsLn $ "[StartsWith<Stack, [" ++ srcName ++ "]>]"
 
 tellTypeGuards ::  (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) => [String] -> m ()
 tellTypeGuards nodes = do
@@ -337,6 +348,12 @@ utilScripts = "type Length<T extends unknown[]> = T['length']\n\
 \) => void) extends ((head: unknown, ...args: infer T2) => void)\n\
 \\t? T2\n\
 \\t: never\n\
+\type Tail<T extends any[]> = ((...args: T) => any) extends ((\n\
+\\t_: infer First,\n\
+\\t...rest: infer Rest\n\
+\) => any)\n\
+\t? T extends any[] ? Rest : ReadonlyArray<Rest[number]>\n\
+\t: []\n\
 \declare const None: unique symbol\n\
 \type None = typeof None\n\
 \type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]\n\

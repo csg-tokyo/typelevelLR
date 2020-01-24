@@ -253,8 +253,8 @@ type Fluent<Stack extends unknown[]> = (
 ) & (
 	{
 		0: {}
-		1: Fluent<Prepend<Node2, Rest<Rest<Stack>>>> extends { end: infer E } 
-			? { end: E }
+		1: Fluent<Prepend<Node2, Tail<Tail<Stack>>>>extends { end: infer F }
+			? { end: F }
 			: {}
 	}[StartsWith<Stack, [Node3, Node4, Node1]>]
 ) & (
@@ -265,15 +265,15 @@ type Fluent<Stack extends unknown[]> = (
 ) & (
 	{
 		0: {}
-		1: Fluent<Prepend<Node2, Tail<Stack>>> extends { end: infer E } 
-			? { end: E }
+		1: Fluent<Prepend<Node2, Tail<Stack>>>extends { end: infer F }
+			? { end: F }
 			: {}
 	}[StartsWith<Stack, [Node4, Node1]>]
 ) & (
 	{
 		0: {}
-		1: Fluent<Prepend<Node3, Tail<Stack>>> extends { end: infer E }
-			? { end: E }
+		1: Fluent<Prepend<Node3, Tail<Stack>>>extends { end: infer F }
+			? { end: F }
 			: {}
 	}[StartsWith<Stack, [Node5, Node4]>]
 )
