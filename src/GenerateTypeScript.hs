@@ -236,19 +236,18 @@ getReduceFluentImplList t rule (srcPath, dstPath) = do
   dstName <- pascalCase <$> nodeName_ (head dstPath)
   typeguard <- do path <- mapM nodeName_ srcPath
                   return $ "startsWith" ++ concat path
-
-  -- n <- (`execStateT` 0) $ forM_ (zip [1 ..] (ruleRhs rule)) $ \(i, sym) -> case sym of
-  --   NonTerminalSymbol nt -> do
-  --     j <- modify (+ 1) >> get
-  --     tellsLn ("  " ++ sharedPtr (nonTerminalName nt) ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg1;")
-  --   TerminalSymbol t -> do
-  --     forM_ (zip [1 ..] (terminalParams t)) $ \(k, param) -> do
-  --       j <- modify (+ 1) >> get
-  --       tellsLn ("  " ++ param ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg" ++ show k ++ ";")
-  -- tellsLn ("  " ++ contentType ++ " const& content = " ++ contentType ++ "( new " ++ ruleName rule ++ "( " ++ intercalate ", " ["x" ++ show i | i <- [1 .. n]] ++ " ) );")
-
   let funName = terminalName t
   let params = terminalParams t
+
+  (n, xs) <- (`execStateT` (0, "")) $ forM_ (zip [1 ..] (ruleRhs rule)) $ \(i, sym) -> case sym of
+    NonTerminalSymbol nt -> do
+      (j, s) <- modify (\(c, ss) -> (c + 1, ss)) >> get
+      put $ (j, s ++ "\t\t\tconst x" ++ show j ++ " = this.stack[" ++ show (length (ruleRhs rule) - i) ++ "].arg1\n")
+    TerminalSymbol t -> do
+      forM_ (zip [1 ..] (terminalParams t)) $ \(k, param) -> do
+        (j, s) <- modify (\(c, ss) -> (c + 1, ss)) >> get
+        put $ (j, s ++ "\t\t\tconst x" ++ show j ++ " = this.stack[" ++ show (length (ruleRhs rule) - i) ++ "].arg" ++ show k ++ "\n")
+  let content = "\t\t\tconst content = new " ++ (pascalCase $ ruleName rule) ++ "(" ++ intercalate ", " ["x" ++ show i | i <- [1 .. n]] ++ ")\n"
 
   -- let xs = concat ["\t\t\tconst x" ++ show i ++ " = this.stack[" ++ show (i-1) ++ "].arg" ++ show i ++ "\n" | (i, _) <- zip [1 ..] params]
   -- let content = "\t\t\tconst content = new " ++ className ++ "(" ++ intercalate ", " ["x" ++ show i | i <- [1 .. 1]] ++ ")\n"

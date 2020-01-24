@@ -280,18 +280,20 @@ class FluentImpl {
 	stack: Node[] = [new Node1]
 	end = (...a: any[]) => {
 		if (startsWithNode5Node4(this.stack)) {
+			const x1 = this.stack[0].arg1
 			const content = new NameString(x1)
 			const tail = this.stack.slice(1)
 			this.stack = [new Node3(content), ...this.stack]
 			return this.end()
 		}
 		if (startsWithNode4Node1(this.stack)) {
-			const content = new SimpleHello(x1)
+			const content = new SimpleHello()
 			const tail = this.stack.slice(1)
 			this.stack = [new Node2(content), ...this.stack]
 			return this.end()
 		}
 		if (startsWithNode3Node4Node1(this.stack)) {
+			const x1 = this.stack[0].arg1
 			const content = new HelloWithName(x1)
 			const tail = this.stack.slice(2)
 			this.stack = [new Node2(content), ...this.stack]
