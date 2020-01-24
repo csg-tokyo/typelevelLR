@@ -1,5 +1,6 @@
-syntax helloDSL (start) {
-    simpleHello   : start -> "hello"
-    helloWithName : start -> "hello" name
-    nameString    : name  -> "name(string)"
+
+syntax helloDSL (Start) {
+    SimpleHello   : Start -> "hello"
+    HelloWithName : Start -> "hello" Name
+    NameString    : Name  -> "name(std::string)"
 }

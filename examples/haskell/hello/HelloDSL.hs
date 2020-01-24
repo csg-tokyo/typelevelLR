@@ -10,8 +10,8 @@ module HelloDSL where
 
 -- grammar definition
 
--- simpleHello : start -> "begin()"
--- helloWithName : start -> "end()" name
+-- simpleHello : start -> "hello()"
+-- helloWithName : start -> "hello()" name
 -- nameString : name -> "name(String)"
 
 -------------------------------------------------------------------------------
