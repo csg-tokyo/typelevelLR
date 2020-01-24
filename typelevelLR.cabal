@@ -25,6 +25,7 @@ library
                      , LRTable
                      , GenerateScala
                      , GenerateCpp
+                     , GenerateTypeScript
                      , Generate
   build-depends:       base        >= 4.7 && < 5
                      , containers  >= 0.5

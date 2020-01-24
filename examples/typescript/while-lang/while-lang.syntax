@@ -1,0 +1,24 @@
+
+syntax whileLanguage (S) {
+## Arithmetic expressions
+    NumLit   : A <- "num(number)"
+    Variable : A <- "var(string)"
+    BinPlus  : A <- A "plus" A
+    BinTimes : A <- A "times" A
+    BinMinus : A <- A "minus" A
+
+## Boolean expressions
+    TrueLit  : B <- "true_"
+    FalseLit : B <- "false_"
+    BinEQ    : B <- A "eq" A
+    BinLE    : B <- A "le" A
+    BoolNot  : B <- "not_" B
+    BoolAnd  : B <- B "and_" B
+
+## Statements
+    Assign     : S <- "var(string)" "assign" A
+    Skip       : S <- "skip"
+    AndThen    : S <- S "andThen" S
+    IfThenElse : S <- "if_" B "then_" S "else_" S
+    While      : S <- "while_" B "do_" S
+}

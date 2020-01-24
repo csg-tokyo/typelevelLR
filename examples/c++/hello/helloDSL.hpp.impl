@@ -1,0 +1,74 @@
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template< typename Head, typename... Tail >
+State< Head, Tail... >::State( Head const& head_, std::shared_ptr< State< Tail... > > const& tail_ )
+  :head( head_ ), tail( tail_ ) {}
+
+template< typename Head, typename... Tail >
+std::shared_ptr< State< Head, Tail... > > State< Head, Tail... >::make( Head const& head, std::shared_ptr< State< Tail... > > const& tail ) {
+  std::shared_ptr< State< Head, Tail... > > result( new State< Head, Tail... >( head, tail ) );
+  result->this_ = result;
+  return result;
+}
+
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::end() {
+  return end_transition( this_.lock() );
+}
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::name( string const& arg1 ) {
+  return name_transition( this_.lock(), arg1 );
+}
+
+template< typename Head, typename... Tail >
+auto State< Head, Tail... >::hello() {
+  return hello_transition( this_.lock() );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// transitions
+
+template< typename... Tail >
+auto end_transition( std::shared_ptr< State< Node2, Tail... > > const& src ) {
+  return src->head.arg1;
+}
+
+template< typename... Tail >
+auto hello_transition( std::shared_ptr< State< Node1, Tail... > > const& src ) {
+  return State< Node4, Node1, Tail... >::make( Node4(  ), src );
+}
+
+template< typename... Tail >
+auto end_transition( std::shared_ptr< State< Node3, Node4, Node1, Tail... > > const& src ) {
+  std::shared_ptr< name > const& x1 = src->head.arg1;
+  std::shared_ptr< start > const& content = std::shared_ptr< start >( new helloWithName( x1 ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail->tail;
+  return end_transition( State< Node2, Node1, Tail... >::make( Node2( content ), tail ) );
+}
+
+template< typename... Tail >
+auto name_transition( std::shared_ptr< State< Node4, Tail... > > const& src, string const& arg1 ) {
+  return State< Node5, Node4, Tail... >::make( Node5( arg1 ), src );
+}
+
+template< typename... Tail >
+auto end_transition( std::shared_ptr< State< Node4, Node1, Tail... > > const& src ) {
+  std::shared_ptr< start > const& content = std::shared_ptr< start >( new simpleHello(  ) );
+  std::shared_ptr< State< Node1, Tail... > > const& tail = src->tail;
+  return end_transition( State< Node2, Node1, Tail... >::make( Node2( content ), tail ) );
+}
+
+template< typename... Tail >
+auto end_transition( std::shared_ptr< State< Node5, Node4, Tail... > > const& src ) {
+  string const& x1 = src->head.arg1;
+  std::shared_ptr< name > const& content = std::shared_ptr< name >( new nameString( x1 ) );
+  std::shared_ptr< State< Node4, Tail... > > const& tail = src->tail;
+  return end_transition( State< Node3, Node4, Tail... >::make( Node3( content ), tail ) );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
