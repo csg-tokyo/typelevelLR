@@ -133,14 +133,14 @@ tellASTDefinitions = do
     forM_ (syntaxRules syntax nt) $ \rule -> do
       let className = pascalCase (ruleName rule)
       tellsLn $ "\tvisit" ++ className ++ "(host : " ++ className ++ ") {"
-      tellsLn $ "\t\tprocess.stdout.write(\"" ++ className ++ "(\")"
+      tellsLn $ "\t\tprocess.stdout.write(\"" ++ className ++ " (\")"
       forM_ (zip [1 ..] (concat $ ruleParams rule)) $ \(i, typ) -> do
         -- tellsLn $ concat $ map nonTerminalName $ syntaxNonTerminals syntax
         if elem typ $ map (pascalCase . nonTerminalName) $ syntaxNonTerminals syntax
         then
           tellsLn ("\t\thost.arg" ++ show i ++ ".accept(this)")
         else
-          tellsLn ("\t\tprocess.stdout.write(host.arg" ++ show i ++ ")")
+          tellsLn ("\t\tprocess.stdout.write(\"\"+host.arg" ++ show i ++ ")")
       tellsLn $ "\t\tprocess.stdout.write(\")\")"
       tellsLn "\t}"
   tellsLn "}"
