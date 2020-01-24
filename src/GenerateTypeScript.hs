@@ -222,12 +222,46 @@ getFluentImpl (src, t, action) = do
 getShiftFluentImplList :: (MonadReader CodeGenerateEnv m) 
   => LRNode -> Terminal -> LRNode -> m (String, String)
 getShiftFluentImplList src t dst = do
+  srcName <- pascalCase <$> nodeName_ src
   dstName <- pascalCase <$> nodeName_ dst
   let params = terminalParams t
   let args = intercalate ", " ["a[" ++ show i ++ "] as " ++ typ | (i, typ) <- zip [1 ..] params]
-  return (terminalName t, "\t\tthis.stack = [new " ++
-    dstName ++ "(" ++ args ++ "), ...this.stack]\n" ++
-    "\t\treturn this")
+  return (terminalName t, "\t\tif (startsWith" ++ 
+    (srcName) ++ "(this.stack)) {\n" ++ 
+    "\t\t\tthis.stack = [new " ++ dstName ++
+    "(" ++ args ++ "), ...this.stack]\n" ++
+    "\t\t\treturn this\n" ++ "\t\t}")
+
+-- getReduceFluentImplList :: (MonadReader CodeGenerateEnv m) 
+--   => LRNode -> Terminal -> Rule -> m (String, String)
+-- getReduceFluentImplList src t rule = do
+--   reduces <- reducesFrom_ src rule
+--   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
+--     srcType <- do path <- mapM nodeName_ srcPath
+--                   return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
+--     dstType <- do path <- mapM nodeName_ dstPath
+--                   return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
+--     baseType <- do baseName <- nodeName_ (last dstPath)
+--                    return ("State< " ++ baseName ++ ", Tail... >")
+--     let funName = terminalName t ++ "_transition"
+--     let params = terminalParams t
+--     let paramList = " const& src" ++ concat [", " ++ typ ++ " const& arg" ++ show i | (i, typ) <- zip [1 ..] params]
+--     dstName <- pascalCase <$> nodeName_ (head dstPath)
+--     let contentType = (nonTerminalName (ruleLhs rule))
+--     tellsLn "template< typename... Tail >"
+--     tellsLn ("auto " ++ funName ++ "( " ++ paramList ++ " ) {")
+--     n <- (`execStateT` 0) $ forM_ (zip [1 ..] (ruleRhs rule)) $ \(i, sym) -> case sym of
+--       NonTerminalSymbol nt -> do
+--         j <- modify (+ 1) >> get
+--         tellsLn ("  " ++ (nonTerminalName nt) ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg1;")
+--       TerminalSymbol t -> do
+--         forM_ (zip [1 ..] (terminalParams t)) $ \(k, param) -> do
+--           j <- modify (+ 1) >> get
+--           tellsLn ("  " ++ param ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg" ++ show k ++ ";")
+--     tellsLn ("  " ++ contentType ++ " const& content = " ++ contentType ++ "( new " ++ ruleName rule ++ "( " ++ intercalate ", " ["x" ++ show i | i <- [1 .. n]] ++ " ) );")
+--     tellsLn ("  " ++ baseType ++ " const& tail = src" ++ concat ["->tail" | _ <- tail srcPath] ++ ";")
+--     tellsLn ("  return " ++ funName ++ "( " ++ dstType ++ "::make( " ++ dstName ++ "( content ), tail )" ++ concat [", arg" ++ show i | (i, _) <- zip [1 ..] params] ++ " );")
+--     tellsLn "}"
 
 tellReduceFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> Terminal -> Rule -> m ()
@@ -279,43 +313,12 @@ tellAcceptFluentType src = do
 
 tellTypeGuards ::  (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) => [String] -> m ()
 tellTypeGuards nodes = do
-  tellsLn $ "function startsWith" ++ (concat nodes) ++ "(arg: any): arg is AddUnknownRest<[" ++ (intercalate ", " nodes) ++ "]> {"
+  tellsLn $ "function startsWith" ++ (concat nodes) ++ "(arg: any): arg is AddUnknownNodeRest<[" ++ (intercalate ", " nodes) ++ "]> {"
   tells "\treturn "
   forMWithSep_ (tells "\t\t&& ") (zip [0 ..] nodes) $ \(i, node) -> do
     tellsLn $ "arg[" ++ show i ++ "] && arg[" ++ show i ++ "]._" ++ node ++ "Brand"
   tellsLn "}"
   tellNewline
-
-getReduceFluentImplList :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
-                     => LRNode -> Terminal -> Rule -> m ()
-getReduceFluentImplList src t rule = do
-  reduces <- reducesFrom_ src rule
-  forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
-    srcType <- do path <- mapM nodeName_ srcPath
-                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
-    dstType <- do path <- mapM nodeName_ dstPath
-                  return ("State< " ++ concat [name ++ ", " | name <- path] ++ "Tail... >")
-    baseType <- do baseName <- nodeName_ (last dstPath)
-                   return ("State< " ++ baseName ++ ", Tail... >")
-    let funName = terminalName t ++ "_transition"
-    let params = terminalParams t
-    let paramList = " const& src" ++ concat [", " ++ typ ++ " const& arg" ++ show i | (i, typ) <- zip [1 ..] params]
-    dstName <- pascalCase <$> nodeName_ (head dstPath)
-    let contentType = (nonTerminalName (ruleLhs rule))
-    tellsLn "template< typename... Tail >"
-    tellsLn ("auto " ++ funName ++ "( " ++ paramList ++ " ) {")
-    n <- (`execStateT` 0) $ forM_ (zip [1 ..] (ruleRhs rule)) $ \(i, sym) -> case sym of
-      NonTerminalSymbol nt -> do
-        j <- modify (+ 1) >> get
-        tellsLn ("  " ++ (nonTerminalName nt) ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg1;")
-      TerminalSymbol t -> do
-        forM_ (zip [1 ..] (terminalParams t)) $ \(k, param) -> do
-          j <- modify (+ 1) >> get
-          tellsLn ("  " ++ param ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg" ++ show k ++ ";")
-    tellsLn ("  " ++ contentType ++ " const& content = " ++ contentType ++ "( new " ++ ruleName rule ++ "( " ++ intercalate ", " ["x" ++ show i | i <- [1 .. n]] ++ " ) );")
-    tellsLn ("  " ++ baseType ++ " const& tail = src" ++ concat ["->tail" | _ <- tail srcPath] ++ ";")
-    tellsLn ("  return " ++ funName ++ "( " ++ dstType ++ "::make( " ++ dstName ++ "( content ), tail )" ++ concat [", arg" ++ show i | (i, _) <- zip [1 ..] params] ++ " );")
-    tellsLn "}"
 
 getAcceptFluentImplList :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)
                      => LRNode -> m ()
@@ -356,17 +359,17 @@ utilScripts = "type Length<T extends unknown[]> = T['length']\n\
 \\t: never\n\
 \type Tail<T extends any[]> = ((...args: T) => any) extends ((\n\
 \\t_: infer First,\n\
-\\t...rest: infer Rest\n\
+\\t...rest: infer R\n\
 \) => any)\n\
-\t? T extends any[] ? Rest : ReadonlyArray<Rest[number]>\n\
-\t: []\n\
+\\t? T extends any[] ? R : ReadonlyArray<R[number]>\n\
+\\t: []\n\
 \declare const None: unique symbol\n\
 \type None = typeof None\n\
 \type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]\n\
-\type AddUnknownRest<Tuple extends unknown[], Result extends unknown[] = [...unknown[]]> = {\n\
+\type AddUnknownNodeRest<Tuple extends Node[], Result extends Node[] = [...Node[]]> = {\n\
 \\tempty: Result,\n\
-\\tnonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Next) => unknown)\n\
-\\t\t? Prepend<First, AddUnknownRest<Rest<Tuple>, Result>>\n\
+\\tnonEmpty: ((..._: Tuple) => Node) extends ((_: infer First, ..._1: infer Next) => Node)\n\
+\\t\t? Prepend<First, AddUnknownNodeRest<Rest<Tuple>, Result>>\n\
 \\t\t: never\n\
 \}[\n\
 \\tTuple extends [unknown, ...unknown[]]\n\

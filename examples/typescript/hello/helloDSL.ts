@@ -26,17 +26,17 @@ type Rest<T extends unknown[]> = ((
 	: never
 type Tail<T extends any[]> = ((...args: T) => any) extends ((
 	_: infer First,
-	...rest: infer Rest
+	...rest: infer R
 ) => any)
-t? T extends any[] ? Rest : ReadonlyArray<Rest[number]>
-t: []
+	? T extends any[] ? R : ReadonlyArray<R[number]>
+	: []
 declare const None: unique symbol
 type None = typeof None
 type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]
-type AddUnknownRest<Tuple extends unknown[], Result extends unknown[] = [...unknown[]]> = {
+type AddUnknownNodeRest<Tuple extends Node[], Result extends Node[] = [...Node[]]> = {
 	empty: Result,
-	nonEmpty: ((..._: Tuple) => unknown) extends ((_: infer First, ..._1: infer Next) => unknown)
-		? Prepend<First, AddUnknownRest<Rest<Tuple>, Result>>
+	nonEmpty: ((..._: Tuple) => Node) extends ((_: infer First, ..._1: infer Next) => Node)
+		? Prepend<First, AddUnknownNodeRest<Rest<Tuple>, Result>>
 		: never
 }[
 	Tuple extends [unknown, ...unknown[]]
@@ -205,35 +205,35 @@ class Node5 {
 
 // transitions
 
-function startsWithNode2(arg: any): arg is AddUnknownRest<[Node2]> {
+function startsWithNode2(arg: any): arg is AddUnknownNodeRest<[Node2]> {
 	return arg[0] && arg[0]._Node2Brand
 }
 
 
-function startsWithNode1(arg: any): arg is AddUnknownRest<[Node1]> {
+function startsWithNode1(arg: any): arg is AddUnknownNodeRest<[Node1]> {
 	return arg[0] && arg[0]._Node1Brand
 }
 
 
-function startsWithNode3Node4Node1(arg: any): arg is AddUnknownRest<[Node3, Node4, Node1]> {
+function startsWithNode3Node4Node1(arg: any): arg is AddUnknownNodeRest<[Node3, Node4, Node1]> {
 	return arg[0] && arg[0]._Node3Brand
 		&& arg[1] && arg[1]._Node4Brand
 		&& arg[2] && arg[2]._Node1Brand
 }
 
 
-function startsWithNode4(arg: any): arg is AddUnknownRest<[Node4]> {
+function startsWithNode4(arg: any): arg is AddUnknownNodeRest<[Node4]> {
 	return arg[0] && arg[0]._Node4Brand
 }
 
 
-function startsWithNode4Node1(arg: any): arg is AddUnknownRest<[Node4, Node1]> {
+function startsWithNode4Node1(arg: any): arg is AddUnknownNodeRest<[Node4, Node1]> {
 	return arg[0] && arg[0]._Node4Brand
 		&& arg[1] && arg[1]._Node1Brand
 }
 
 
-function startsWithNode5Node4(arg: any): arg is AddUnknownRest<[Node5, Node4]> {
+function startsWithNode5Node4(arg: any): arg is AddUnknownNodeRest<[Node5, Node4]> {
 	return arg[0] && arg[0]._Node5Brand
 		&& arg[1] && arg[1]._Node4Brand
 }
@@ -282,12 +282,16 @@ class FluentImpl {
 
 	}
 	hello = (...a: any[]) => {
-		this.stack = [new Node4(), ...this.stack]
-		return this
+		if (startsWithNode1(this.stack)) {
+			this.stack = [new Node4(), ...this.stack]
+			return this
+		}
 	}
 	name = (...a: any[]) => {
-		this.stack = [new Node5(a[1] as string), ...this.stack]
-		return this
+		if (startsWithNode4(this.stack)) {
+			this.stack = [new Node5(a[1] as string), ...this.stack]
+			return this
+		}
 	}
 }
 
