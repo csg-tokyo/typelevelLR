@@ -1,4 +1,8 @@
 {
+    "[haskell]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2
+    },
     "files.associations": {
         "memory": "cpp",
         "__bit_reference": "cpp",
