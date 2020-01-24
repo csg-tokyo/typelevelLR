@@ -181,18 +181,19 @@ tellTransitions = do
   tellsLn "// transitions"
   tellNewline
   -- type guards
-  forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> case action of
+  s <- (`execStateT` (Set.empty :: Set.Set [String])) $ forM_ (lrTableTransitions table) $ \(src, t, action) -> case action of
     Shift  dst  -> do
       srcName <- pascalCase <$> nodeName_ src
-      tellTypeGuards [srcName]
+      modify $ Set.insert [srcName]
     Reduce rule -> do
       reduces <- reducesFrom_ src rule
       forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
         path <- mapM nodeName_ srcPath
-        tellTypeGuards path
+        modify $ Set.insert $ path
     Accept      -> do
       srcName <- nodeName_ src
-      tellTypeGuards [srcName]
+      modify $ Set.insert [srcName]
+  mapM tellTypeGuards $ Set.toList s
   -- fluent type
   tellsLn "type Fluent<Stack extends unknown[]> = ("
   forMWithSep_ (tellsLn ") & (") (lrTableTransitions table) $ \(src, t, action) -> case action of
@@ -286,7 +287,7 @@ tellReduceFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEn
                      => LRNode -> Terminal -> Rule -> m ()
 tellReduceFluentType src t rule = do
   reduces <- reducesFrom_ src rule
-  forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
+  forMWithSep_ (tellsLn ") & (") reduces $ \(srcPath, dstPath) -> do
     dstName <- pascalCase <$> nodeName_ (head dstPath)
     condition <- do path <- mapM nodeName_ srcPath
                     return $ "[StartsWith<Stack, [" ++ intercalate ", " path ++ "]>]"
