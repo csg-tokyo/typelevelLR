@@ -205,15 +205,13 @@ class Node5 {
 
 // transitions
 
-function startsWithNode2(arg: any): arg is AddUnknownNodeRest<[Node2]> {
-	return arg[0] && arg[0]._Node2Brand
-}
-
-
 function startsWithNode1(arg: any): arg is AddUnknownNodeRest<[Node1]> {
 	return arg[0] && arg[0]._Node1Brand
 }
 
+function startsWithNode2(arg: any): arg is AddUnknownNodeRest<[Node2]> {
+	return arg[0] && arg[0]._Node2Brand
+}
 
 function startsWithNode3Node4Node1(arg: any): arg is AddUnknownNodeRest<[Node3, Node4, Node1]> {
 	return arg[0] && arg[0]._Node3Brand
@@ -221,17 +219,14 @@ function startsWithNode3Node4Node1(arg: any): arg is AddUnknownNodeRest<[Node3, 
 		&& arg[2] && arg[2]._Node1Brand
 }
 
-
 function startsWithNode4(arg: any): arg is AddUnknownNodeRest<[Node4]> {
 	return arg[0] && arg[0]._Node4Brand
 }
-
 
 function startsWithNode4Node1(arg: any): arg is AddUnknownNodeRest<[Node4, Node1]> {
 	return arg[0] && arg[0]._Node4Brand
 		&& arg[1] && arg[1]._Node1Brand
 }
-
 
 function startsWithNode5Node4(arg: any): arg is AddUnknownNodeRest<[Node5, Node4]> {
 	return arg[0] && arg[0]._Node5Brand
