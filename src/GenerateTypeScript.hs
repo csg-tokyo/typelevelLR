@@ -24,6 +24,8 @@ import Data.Either           (isRight)
 import Data.List             (groupBy, mapAccumL)
 import Data.Function         (fix)
 
+import Debug.Trace
+
 -------------------------------------------------------------------------------
 
 tellSeparator :: (MonadWriter (Endo String) m) => m ()
@@ -173,39 +175,41 @@ tellAutomatonStates = do
 
 -------------------------------------------------------------------------------
 
-tellTransitions ::  (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) => m ()
+tellTransitions :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m) => m ()
 tellTransitions = do
   table <- lrTable_
   tellsLn "// transitions"
   tellNewline
   -- type guards
-  forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> do
-    case action of
-      Shift  dst  -> do
-        srcName <- pascalCase <$> nodeName_ src
-        tellTypeGuards [srcName]
-      Reduce rule -> do
-        reduces <- reducesFrom_ src rule
-        forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
-          path <- mapM nodeName_ srcPath
-          tellTypeGuards path
-      Accept      -> do
-        srcName <- nodeName_ src
-        tellTypeGuards [srcName]
+  forMWithSep_ tellNewline (lrTableTransitions table) $ \(src, t, action) -> case action of
+    Shift  dst  -> do
+      srcName <- pascalCase <$> nodeName_ src
+      tellTypeGuards [srcName]
+    Reduce rule -> do
+      reduces <- reducesFrom_ src rule
+      forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
+        path <- mapM nodeName_ srcPath
+        tellTypeGuards path
+    Accept      -> do
+      srcName <- nodeName_ src
+      tellTypeGuards [srcName]
   -- fluent type
   tellsLn "type Fluent<Stack extends unknown[]> = ("
-  forMWithSep_ (tellsLn ") & (") (lrTableTransitions table) $ \(src, t, action) -> do
-    case action of
-      Shift  dst  -> tellShiftFluentType  src t dst
-      Reduce rule -> tellReduceFluentType src t rule
-      Accept      -> tellAcceptFluentType src
+  forMWithSep_ (tellsLn ") & (") (lrTableTransitions table) $ \(src, t, action) -> case action of
+    Shift  dst  -> tellShiftFluentType  src t dst
+    Reduce rule -> tellReduceFluentType src t rule
+    Accept      -> tellAcceptFluentType src
   tellsLn ")"
   -- fluent implementation
   tellNewline
   tellsLn "class FluentImpl {"
   tellsLn "\tstack: Node[] = [new Node1]"
-  let allFluentImpl = mapM getFluentImpl $ lrTableTransitions table
-  forM_ (Map.toAscList (Map.fromListWith (++) allFluentImpl)) $ \(funName, impl) -> do
+  --let allFluentImpl = mapM getFluentImpl $ lrTableTransitions table
+
+  allFluentImpl <- mapM getFluentImpl $ lrTableTransitions table
+  let funNameBodyPair = Map.toAscList $ Map.fromListWith (++) $ concat allFluentImpl
+
+  forM_ funNameBodyPair $ \(funName, impl) -> do
     tellsLn $ "\t" ++ funName ++ " = (...a: any[]) => {"
     tellsLn impl
     tellsLn $ "\t}"
@@ -213,36 +217,49 @@ tellTransitions = do
 
 getFluentImpl :: (MonadReader CodeGenerateEnv m)
   => (LRNode, Terminal, LRAction) -> m [(String, String)]
-getFluentImpl (src, t, action) = do
-  case action of
-    Shift  dst  -> do
-      shifth <- getShiftFluentImplList src t dst
-      return [shifth]
-    Reduce rule -> do
-      reduces <- reducesFrom_ src rule
-      reduceh <- mapM (getReduceFluentImplList t) reduces
-      return reduceh
-    Accept      -> do
-      accepth <- getAcceptFluentImplList src
-      return [accepth]
+getFluentImpl (src, t, action) = case action of
+  Shift  dst  -> do
+    shifth <- getShiftFluentImplList src t dst
+    return [shifth]
+  Reduce rule -> do
+    reduces <- reducesFrom_ src rule
+    reduceh <- mapM (getReduceFluentImplList t rule) $ reduces
+    return reduceh
+  Accept      -> do
+    accepth <- getAcceptFluentImplList src
+    return [accepth]
 
 getReduceFluentImplList :: (MonadReader CodeGenerateEnv m)
-  => Terminal -> ([LRNode], [LRNode]) -> m (String, String)
-getReduceFluentImplList t (srcPath, dstPath) = do
+  => Terminal -> Rule -> ([LRNode], [LRNode]) -> m (String, String)
+getReduceFluentImplList t rule (srcPath, dstPath) = do
+  let className = pascalCase (ruleName rule)
   dstName <- pascalCase <$> nodeName_ (head dstPath)
   typeguard <- do path <- mapM nodeName_ srcPath
                   return $ "startsWith" ++ concat path
+
+  -- n <- (`execStateT` 0) $ forM_ (zip [1 ..] (ruleRhs rule)) $ \(i, sym) -> case sym of
+  --   NonTerminalSymbol nt -> do
+  --     j <- modify (+ 1) >> get
+  --     tellsLn ("  " ++ sharedPtr (nonTerminalName nt) ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg1;")
+  --   TerminalSymbol t -> do
+  --     forM_ (zip [1 ..] (terminalParams t)) $ \(k, param) -> do
+  --       j <- modify (+ 1) >> get
+  --       tellsLn ("  " ++ param ++ " const& x" ++ show j ++ " = src->" ++ ([1 .. length (ruleRhs rule) - i] *> "tail->") ++ "head.arg" ++ show k ++ ";")
+  -- tellsLn ("  " ++ contentType ++ " const& content = " ++ contentType ++ "( new " ++ ruleName rule ++ "( " ++ intercalate ", " ["x" ++ show i | i <- [1 .. n]] ++ " ) );")
+
   let funName = terminalName t
   let params = terminalParams t
-  let xs = concat ["\t\t\tconst x" ++ show i ++ " = this.stack[" ++ show (i-1) ++ "].arg" ++ show i ++ "\n" | (i, _) <- zip [1 ..] params]
-  let content = "\t\t\tconst content = new " ++ dstName ++ "(" ++ (intercalate "," ["x" ++ show i | (i, _) <- zip [1 ..] params]) ++ ")"
+
+  -- let xs = concat ["\t\t\tconst x" ++ show i ++ " = this.stack[" ++ show (i-1) ++ "].arg" ++ show i ++ "\n" | (i, _) <- zip [1 ..] params]
+  -- let content = "\t\t\tconst content = new " ++ className ++ "(" ++ intercalate ", " ["x" ++ show i | i <- [1 .. 1]] ++ ")\n"
+
   let tail = "\t\t\tconst tail = this.stack.slice(" ++ show (length srcPath - 1) ++ ")\n"
   return (funName, "\t\tif (" ++
     typeguard ++ "(this.stack)) {\n" ++ xs ++
     content ++ tail ++
     "\t\t\tthis.stack = [new " ++ dstName ++
     "(content), ...this.stack]\n" ++
-    "\t\t\treturn this." ++ funName ++ "()\n" ++ "\t\t}")
+    "\t\t\treturn this." ++ funName ++ "()\n" ++ "\t\t}\n")
 
 getShiftFluentImplList :: (MonadReader CodeGenerateEnv m)
   => LRNode -> Terminal -> LRNode -> m (String, String)
@@ -273,7 +290,7 @@ tellReduceFluentType src t rule = do
   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
     dstName <- pascalCase <$> nodeName_ (head dstPath)
     condition <- do path <- mapM nodeName_ srcPath
-                    return $ "[StartsWith<Stack, [" ++ (intercalate ", " path) ++ "]>]"
+                    return $ "[StartsWith<Stack, [" ++ intercalate ", " path ++ "]>]"
     dstType <- do path <- mapM nodeName_ dstPath
                   return $ "Fluent<Prepend<" ++ dstName ++ ", " ++
                     concat ["Tail<" | _ <- tail srcPath] ++ "Stack" ++
