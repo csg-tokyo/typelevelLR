@@ -279,11 +279,11 @@ type Fluent<Stack extends unknown[]> = (
 class FluentImpl {
 	stack: Node[] = [new Node1]
 	end = (...a: any[]) => {
-		if (startsWithNode3Node4Node1(this.stack)) {
+		if (startsWithNode5Node4(this.stack)) {
 			const x1 = this.stack[0].arg1
-			const content = new HelloWithName(x1)
-			const tail = this.stack.slice(2)
-			this.stack = [new Node2(content), ...tail]
+			const content = new NameString(x1)
+			const tail = this.stack.slice(1)
+			this.stack = [new Node3(content), ...tail]
 			return this.end()
 		}
 		if (startsWithNode4Node1(this.stack)) {
@@ -292,11 +292,11 @@ class FluentImpl {
 			this.stack = [new Node2(content), ...tail]
 			return this.end()
 		}
-		if (startsWithNode5Node4(this.stack)) {
+		if (startsWithNode3Node4Node1(this.stack)) {
 			const x1 = this.stack[0].arg1
-			const content = new NameString(x1)
-			const tail = this.stack.slice(1)
-			this.stack = [new Node3(content), ...tail]
+			const content = new HelloWithName(x1)
+			const tail = this.stack.slice(2)
+			this.stack = [new Node2(content), ...tail]
 			return this.end()
 		}
 		if (startsWithNode2(this.stack)) {
@@ -304,8 +304,10 @@ class FluentImpl {
 		}
 	}
 	hello = (...a: any[]) => {
-		this.stack = [new Node4(), ...this.stack]
-		return this
+		if (startsWithNode1(this.stack)) {
+			this.stack = [new Node4(), ...this.stack]
+			return this
+		}
 	}
 	name = (...a: any[]) => {
 		if (startsWithNode4(this.stack)) {
@@ -322,3 +324,4 @@ export function begin(): Fluent<[Node1]> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+

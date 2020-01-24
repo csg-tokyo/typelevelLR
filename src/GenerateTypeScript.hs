@@ -266,7 +266,7 @@ getShiftFluentImplList src t dst = do
   srcName <- pascalCase <$> nodeName_ src
   dstName <- pascalCase <$> nodeName_ dst
   let params = terminalParams t
-  let args = intercalate ", " ["a[" ++ show i ++ "] as " ++ typ | (i, typ) <- zip [1 ..] params]
+  let args = intercalate ", " ["a[" ++ show i ++ "] as " ++ typ | (i, typ) <- zip [0 ..] params]
   return (terminalName t, "\t\tif (startsWith" ++
     (srcName) ++ "(this.stack)) {\n" ++
     "\t\t\tthis.stack = [new " ++ dstName ++
