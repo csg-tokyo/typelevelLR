@@ -276,27 +276,6 @@ type Fluent<Stack extends unknown[]> = (
 	}[StartsWith<Stack, [Node5, Node4]>]
 )
 
-class FluentImpl {
-	stack: Node[] = [new Node1]
-	end = (...a: any[]) => {
-		if (startsWithNode2(this.stack)) {
-			return this.stack[0].arg1
-		}
-	}
-	hello = (...a: any[]) => {
-		if (startsWithNode1(this.stack)) {
-			this.stack = [new Node4(), ...this.stack]
-			return this
-		}
-	}
-	name = (...a: any[]) => {
-		if (startsWithNode4(this.stack)) {
-			this.stack = [new Node5(a[1] as string), ...this.stack]
-			return this
-		}
-	}
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 export function begin(): Fluent<[Node1]> {

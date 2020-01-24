@@ -204,67 +204,65 @@ tellTransitions = do
   tellNewline
   tellsLn "class FluentImpl {"
   tellsLn "\tstack: Node[] = [new Node1]"
-  allFluentImpl <- mapM getFluentImpl $ lrTableTransitions table
+  let allFluentImpl = mapM getFluentImpl $ lrTableTransitions table
   forM_ (Map.toAscList (Map.fromListWith (++) allFluentImpl)) $ \(funName, impl) -> do
     tellsLn $ "\t" ++ funName ++ " = (...a: any[]) => {"
     tellsLn impl
     tellsLn $ "\t}"
   tellsLn $ "}"
 
-getFluentImpl :: (MonadReader CodeGenerateEnv m) 
-  => (LRNode, Terminal, LRAction) -> m (String, String)
+getFluentImpl :: (MonadReader CodeGenerateEnv m)
+  => (LRNode, Terminal, LRAction) -> m [(String, String)]
 getFluentImpl (src, t, action) = do
   case action of
-    Shift  dst  -> getShiftFluentImplList src t dst
-    Reduce rule -> return ("end", "") -- getReduceFluentImpl src t rule
-    Accept      -> getAcceptFluentImplList src
+    Shift  dst  -> do
+      shifth <- getShiftFluentImplList src t dst
+      return [shifth]
+    Reduce rule -> do
+      reduces <- reducesFrom_ src rule
+      reduceh <- mapM (getReduceFluentImplList t) reduces
+      return reduceh
+    Accept      -> do
+      accepth <- getAcceptFluentImplList src
+      return [accepth]
 
-getShiftFluentImplList :: (MonadReader CodeGenerateEnv m) 
+getReduceFluentImplList :: (MonadReader CodeGenerateEnv m)
+  => Terminal -> ([LRNode], [LRNode]) -> m (String, String)
+getReduceFluentImplList t (srcPath, dstPath) = do
+  dstName <- pascalCase <$> nodeName_ (head dstPath)
+  typeguard <- do path <- mapM nodeName_ srcPath
+                  return $ "startsWith" ++ concat path
+  let funName = terminalName t
+  let params = terminalParams t
+  let xs = concat ["\t\t\tconst x" ++ show i ++ " = this.stack[" ++ show (i-1) ++ "].arg" ++ show i ++ "\n" | (i, _) <- zip [1 ..] params]
+  let content = "\t\t\tconst content = new " ++ dstName ++ "(" ++ (intercalate "," ["x" ++ show i | (i, _) <- zip [1 ..] params]) ++ ")"
+  let tail = "\t\t\tconst tail = this.stack.slice(" ++ show (length srcPath - 1) ++ ")\n"
+  return (funName, "\t\tif (" ++
+    typeguard ++ "(this.stack)) {\n" ++ xs ++
+    content ++ tail ++
+    "\t\t\tthis.stack = [new " ++ dstName ++
+    "(content), ...this.stack]\n" ++
+    "\t\t\treturn this." ++ funName ++ "()\n" ++ "\t\t}")
+
+getShiftFluentImplList :: (MonadReader CodeGenerateEnv m)
   => LRNode -> Terminal -> LRNode -> m (String, String)
 getShiftFluentImplList src t dst = do
   srcName <- pascalCase <$> nodeName_ src
   dstName <- pascalCase <$> nodeName_ dst
   let params = terminalParams t
   let args = intercalate ", " ["a[" ++ show i ++ "] as " ++ typ | (i, typ) <- zip [1 ..] params]
-  return (terminalName t, "\t\tif (startsWith" ++ 
-    (srcName) ++ "(this.stack)) {\n" ++ 
+  return (terminalName t, "\t\tif (startsWith" ++
+    (srcName) ++ "(this.stack)) {\n" ++
     "\t\t\tthis.stack = [new " ++ dstName ++
     "(" ++ args ++ "), ...this.stack]\n" ++
     "\t\t\treturn this\n" ++ "\t\t}")
 
--- getReduceFluentImplList :: (MonadReader CodeGenerateEnv m) 
---   => LRNode -> Terminal -> Rule -> m (String, String)
--- getReduceFluentImplList src t rule = do
---   reduces <- reducesFrom_ src rule
---   forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
---     dstName <- pascalCase <$> nodeName_ (head dstPath)
---     condition <- do path <- mapM nodeName_ srcPath
---                     return $ "[StartsWith<Stack, [" ++ (intercalate ", " path) ++ "]>]"
---     dstType <- do path <- mapM nodeName_ dstPath
---                   return $ "Fluent<Prepend<" ++ dstName ++ ", " ++
---                     concat ["Tail<" | _ <- tail srcPath] ++ "Stack" ++ 
---                     concat [">" | _ <- tail srcPath] ++ ">>"
-            
---     reduces <- reducesFrom_ src rule
---     forMWithSep_ tellNewline reduces $ \(srcPath, dstPath) -> do
---       path <- mapM nodeName_ srcPath
---       tellTypeGuards path
-
---     let funName = terminalName t
---     let params = terminalParams t
---     let args = intercalate ", " ["a[" ++ show i ++ "] as " ++ typ | (i, typ) <- zip [1 ..] params]
---     return (terminalName t, "\t\tif (startsWith" ++ 
---       (srcName) ++ "(this.stack)) {\n" ++ 
---       "\t\t\tthis.stack = [new " ++ dstName ++
---       "(" ++ args ++ "), ...this.stack]\n" ++
---       "\t\t\treturn this\n" ++ "\t\t}")
-
-getAcceptFluentImplList :: (MonadReader CodeGenerateEnv m) 
+getAcceptFluentImplList :: (MonadReader CodeGenerateEnv m)
   => LRNode -> m (String, String)
 getAcceptFluentImplList src = do
   srcName <- nodeName_ src
   return ("end", "\t\tif (startsWith" ++
-    srcName ++ "(this.stack)) {\n" ++ 
+    srcName ++ "(this.stack)) {\n" ++
     "\t\t\treturn this.stack[0].arg1\n" ++ "\t\t}")
 
 
@@ -278,7 +276,7 @@ tellReduceFluentType src t rule = do
                     return $ "[StartsWith<Stack, [" ++ (intercalate ", " path) ++ "]>]"
     dstType <- do path <- mapM nodeName_ dstPath
                   return $ "Fluent<Prepend<" ++ dstName ++ ", " ++
-                    concat ["Tail<" | _ <- tail srcPath] ++ "Stack" ++ 
+                    concat ["Tail<" | _ <- tail srcPath] ++ "Stack" ++
                     concat [">" | _ <- tail srcPath] ++ ">>"
     let funName = terminalName t
     let params = terminalParams t
