@@ -278,8 +278,10 @@ type Fluent<Stack extends unknown[]> = (
 
 class FluentImpl {
 	stack: Node[] = [new Node1]
-	 = (...a: any[]) => {
-
+	end = (...a: any[]) => {
+		if (startsWithNode2(this.stack)) {
+			return this.stack[0].arg1
+		}
 	}
 	hello = (...a: any[]) => {
 		if (startsWithNode1(this.stack)) {
