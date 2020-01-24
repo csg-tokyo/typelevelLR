@@ -1,4 +1,4 @@
-import * as helloDSL from "./_helloDSL"
+import * as helloDSL from "./helloDSL"
 helloDSL.begin()
     .hello()
     .name("OK")

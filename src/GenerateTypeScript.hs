@@ -257,7 +257,7 @@ getReduceFluentImplList t rule (srcPath, dstPath) = do
     typeguard ++ "(this.stack)) {\n" ++ xs ++
     content ++ tail ++
     "\t\t\tthis.stack = [new " ++ dstName ++
-    "(content), ...this.stack]\n" ++
+    "(content), ...tail]\n" ++
     "\t\t\treturn this." ++ funName ++ "()\n" ++ "\t\t}\n")
 
 getShiftFluentImplList :: (MonadReader CodeGenerateEnv m)
