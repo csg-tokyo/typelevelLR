@@ -242,7 +242,7 @@ type Fluent<Stack extends unknown[]> = (
 		{}
 ) & (
 	StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
-		{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
+		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
 		{}
 ) & (
 	StartsWith<Stack, [Node4]> extends 1 ?
@@ -250,11 +250,11 @@ type Fluent<Stack extends unknown[]> = (
 		{}
 ) & (
 	StartsWith<Stack, [Node4, Node1]> extends 1 ?
-		{ end: () => Fluent<AddUnknownRest<[Node2, Node1]>> } :
+		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
 		{}
 ) & (
 	StartsWith<Stack, [Node5, Node4]> extends 1 ?
-		{ end: () => Fluent<AddUnknownRest<[Node3, Node4]>> } :
+		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node3, Node4]>>['end']> } :
 		{}
 )
 

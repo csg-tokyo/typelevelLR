@@ -220,7 +220,7 @@ tellReduceFluentType src t rule = do
     let funName = terminalName t
     let params = terminalParams t
     let args = intercalate ", " ["arg" ++ show i ++ ": " ++ typ | (i, typ) <- zip [1 ..] params]
-    tellsLn $ "\t\t{ " ++ funName ++ ": (" ++ args ++ ") => " ++ dstType ++ " } :"
+    tellsLn $ "\t\t{ " ++ funName ++ ": (" ++ args ++ ") => ReturnType<" ++ dstType ++ "['" ++ funName ++ "']> } :"
     tellsLn "\t\t{}"
 
 tellShiftFluentType :: (MonadWriter (Endo String) m, MonadReader CodeGenerateEnv m)

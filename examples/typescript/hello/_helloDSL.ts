@@ -24,6 +24,14 @@ type Rest<T extends unknown[]> = ((
 ) => void) extends ((head: unknown, ...args: infer T2) => void)
 	? T2
 	: never
+
+type Tail<T extends any[]> = ((...args: T) => any) extends ((
+	_: infer First,
+	...rest: infer Rest
+) => any)
+	? T extends any[] ? Rest : ReadonlyArray<Rest[number]>
+	: []
+	
 declare const None: unique symbol
 type None = typeof None
 type Head<T extends unknown[]> = Length<T> extends 0 ? None : T[0]
@@ -233,29 +241,41 @@ function startsWithNode5Node4(arg: any): arg is AddUnknownRest<[Node5, Node4]> {
 }
 
 type Fluent<Stack extends unknown[]> = (
-	StartsWith<Stack, [Node2]> extends 1 ?
-		{ end: () => Node2['arg1'] } :
-		{}
+	{
+		0: {}
+		1: { end: () => Node2['arg1'] }
+	}[StartsWith<Stack, [Node2]>]
 ) & (
-	StartsWith<Stack, [Node1]> extends 1 ?
-		{ hello: () => Fluent<AddUnknownRest<Prepend<Node4, Stack>>> } :
-		{}
+	{
+		0: {}
+		1: { hello: () => Fluent<Prepend<Node4, Stack>> }
+	}[StartsWith<Stack, [Node1]>]
 ) & (
-	StartsWith<Stack, [Node3, Node4, Node1]> extends 1 ?
-		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
-		{}
+	{
+		0: {}
+		1: Fluent<Prepend<Node2, Rest<Rest<Stack>>>> extends { end: infer E } 
+			? { end: E }
+			: {}
+	}[StartsWith<Stack, [Node3, Node4, Node1]>]
 ) & (
-	StartsWith<Stack, [Node4]> extends 1 ?
-		{ name: (arg1: string) => Fluent<AddUnknownRest<Prepend<Node5, Stack>>> } :
-		{}
+	{
+		0: {}
+		1: { name: (arg1: string) => Fluent<Prepend<Node5, Stack>> }
+	}[StartsWith<Stack, [Node4]>]
 ) & (
-	StartsWith<Stack, [Node4, Node1]> extends 1 ?
-		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node2, Node1]>>['end']> } :
-		{}
+	{
+		0: {}
+		1: Fluent<Prepend<Node2, Tail<Stack>>> extends { end: infer E } 
+			? { end: E }
+			: {}
+	}[StartsWith<Stack, [Node4, Node1]>]
 ) & (
-	StartsWith<Stack, [Node5, Node4]> extends 1 ?
-		{ end: () => ReturnType<Fluent<AddUnknownRest<[Node3, Node4, Node1]>>['end']> } :
-		{}
+	{
+		0: {}
+		1: Fluent<Prepend<Node3, Tail<Stack>>> extends { end: infer E }
+			? { end: E }
+			: {}
+	}[StartsWith<Stack, [Node5, Node4]>]
 )
 
 class FluentImpl {
@@ -301,3 +321,67 @@ export function begin(): Fluent<[Node1]> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+
+type f = Fluent<[Node5, Node4, Node1]>
+type f2 = Fluent<Prepend<Node3, Tail<[Node5, Node4]>>>
+(new FluentImpl as Fluent<[Node1]>).hello().name
+
+type S = [Node4, Node1]
+type S2 = {
+	0: []
+	1: Prepend<Node5, S>
+}[StartsWith<S, [Node4, Node1]>]
+
+type S3 = Prepend<Node3, Tail<S2>>
+
+type f3 = Fluent<[Node5, Node4, Node1]>
+
+type x = {
+	0: {}
+	1: Fluent<Prepend<Node3, Tail<S2>>> extends { end: infer E }
+		? { end: E }
+		: {}
+}[StartsWith<S2, [Node5, Node4]>]
+
+type x2 = {
+	0: {}
+	1: Fluent<Prepend<Node3, Tail<S2>>> extends { end: infer E }
+		? { end: E }
+		: {}
+}[StartsWith<S2, [Node5, Node4]>]
+
+type pp = Prepend<Node2, Tail<Tail<S2>>>
+type ppf = Fluent<Prepend<Node2, Tail<Tail<S2>>>>
+type s = StartsWith<S2, [Node3, Node4, Node1]>
+
+type ex = {
+	0: {}
+	1: Fluent<Prepend<Node2, Tail<Tail<S3>>>> extends { end: infer E } 
+		? { end: E }
+		: {}
+}[StartsWith<S3, [Node3, Node4, Node1]>]
+type TuplePrepend<Tuple extends any[], Addend> = ((_: Addend, ..._1: Tuple) => any) extends ((
+	..._: infer Result
+) => any)
+	? Result
+	: never;
+
+type xxx<Stack extends Node[]> = (
+	StartsWith<Stack, [Node5, Node4]> extends 1 
+		? ((
+			arg: Node3,
+			...rest: Tail<Stack>
+		) => void) extends ((...args: infer T2) => void)
+			? T2
+			: never
+		: {}
+)
+type fff = Prepend<Node3, Tail<[Node5, Node4, Node1]>>
+type f541 = xxx<[Node5, Node4, Node1]>
+type f341 = Fluent<Prepend<Node3, Tail<[Node5, Node4, Node1]>>> extends { end: infer E }
+	? { end: E }
+	: {}
+type s541 = StartsWith<[Node5, Node4, Node1], [Node5, Node4]>
+
+type p4 = Prepend<Node3, Tail<[Node5, Node4, Node1]>>
