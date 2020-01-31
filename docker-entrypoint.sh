@@ -2,7 +2,7 @@
 FILE=./bin/typelevelLR
 if [[ -f "$FILE" ]]; then
   echo "$FILE exists, use build cache."
-  mv ./bin/typelevelLR /usr/local/bin
+  cp ./bin/typelevelLR /usr/local/bin
   /bin/bash
   exit 0
 fi

@@ -1,6 +1,8 @@
 
 ## TypeLevelLR
 
+![test](https://github.com/csg-tokyo/typelevelLR/workflows/test/badge.svg)
+
 - Fluent DSL Generator
 
 - Supporting lauguages are:
