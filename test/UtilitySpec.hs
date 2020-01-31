@@ -31,7 +31,7 @@ spec = describe "Utility" $ do
 fromLeftSpec :: Spec
 fromLeftSpec = describe "fromLeft" $ do
   it "fromLeft . Left == id" $ property $ \(x :: Int) -> do
-    fromLeft (Left x) `shouldBe` x
+    fromLeft (Left x :: Either Int Int) `shouldBe` x
 
   it "(fromLeft . Right) throws an error" $ property $ \(x :: Int) -> do
     fromLeft (Right x) `shouldThrow` (\(_ :: SomeException) -> True)
@@ -39,7 +39,7 @@ fromLeftSpec = describe "fromLeft" $ do
 fromRightSpec :: Spec
 fromRightSpec = describe "fromRight" $ do
   it "fromRight . Right == id" $ property $ \(x :: Int) -> do
-    fromRight (Right x) `shouldBe` x
+    fromRight (Right x :: Either Int Int) `shouldBe` x
 
   it "(fromRight . Left) throws an error" $ property $ \(x :: Int) -> do
     fromRight (Left x) `shouldThrow` (\(_ :: SomeException) -> True)
