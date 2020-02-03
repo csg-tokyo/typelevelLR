@@ -102,25 +102,25 @@ mapMWithSepSpec = describe "mapMWithSep" $ do
 splitIdentifierSpec :: Spec
 splitIdentifierSpec = describe "splitIdentifier" $ do
   it "works for camelCase" $ do
-    splitIdentifier "camelCase" `shouldBe` ["camel", "Case"]
-    splitIdentifier "splitIdentifierSpec" `shouldBe` ["split", "identifier", "spec"]
+    splitIdentifier "camelCase" `shouldBe` ["", "camel", "Case", ""]
+    splitIdentifier "splitIdentifierSpec" `shouldBe` ["", "split", "Identifier", "Spec", ""]
 
   it "works for PascalCase" $ do
-    splitIdentifier "PascalCase" `shouldBe` ["Pascal", "Case"]
-    splitIdentifier "MonadTrans" `shouldBe` ["monad", "trans"]
-    splitIdentifier "Int" `shouldBe` ["int"]
+    splitIdentifier "PascalCase" `shouldBe` ["",  "Pascal", "Case", ""]
+    splitIdentifier "MonadTrans" `shouldBe` ["Monad", "Trans", ""]
+    splitIdentifier "Int" `shouldBe` ["", "int", ""]
 
   it "works for snake_case" $ do
-    splitIdentifier "snake_case" `shouldBe` ["snake", "case"]
+    splitIdentifier "snake_case" `shouldBe` ["", "snake", "case", ""]
 
   it "works for lisp-case" $ do
-    splitIdentifier "lisp-case" `shouldBe` ["lisp", "case"]
+    splitIdentifier "lisp-case" `shouldBe` ["", "lisp", "case", ""]
 
   it "works for ALL_CAPS" $ do
-    splitIdentifier "ALL_CAPS" `shouldBe` ["ALL", "CAPS"]
+    splitIdentifier "ALL_CAPS" `shouldBe` ["", "ALL", "CAPS", ""]
 
   it "works for edge case" $ do
     splitIdentifier "" `shouldBe` []
-    splitIdentifier "ASTNode" `shouldBe` ["AST", "Node"]
+    splitIdentifier "ASTNode" `shouldBe` ["", "AST", "Node", ""]
 
 -------------------------------------------------------------------------------
