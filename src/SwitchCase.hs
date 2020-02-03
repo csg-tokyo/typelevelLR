@@ -99,7 +99,7 @@ word :: (Stream s m Char) => ParsecT s u m String
 word = number <|> lowerWord <|> try camelWord <|> upperWord <|> unknownWord
 
 splitIdentifier :: String -> [String]
-splitIdentifier = fromRight . parse words "splitIdentifier"
+splitIdentifier = (filter (\s -> s /= "")) . fromRight . parse words "splitIdentifier"
   where words = sep <++> word `trySepBy` sep <++> sep
 
 -------------------------------------------------------------------------------
