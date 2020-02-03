@@ -108,7 +108,7 @@ splitIdentifierSpec = describe "splitIdentifier" $ do
   it "works for PascalCase" $ do
     splitIdentifier "PascalCase" `shouldBe` ["",  "Pascal", "Case", ""]
     splitIdentifier "MonadTrans" `shouldBe` ["", "Monad", "Trans", ""]
-    splitIdentifier "Int" `shouldBe` ["", "int", ""]
+    splitIdentifier "Int" `shouldBe` ["", "Int", ""]
 
   it "works for snake_case" $ do
     splitIdentifier "snake_case" `shouldBe` ["", "snake", "case", ""]
