@@ -56,7 +56,7 @@ parseRule = do
   return (Rule name lhs rhs)
 
 parseDerivation :: (Stream s m Char) => ParsecT s u m [Symbol]
-parseDerivation  = try $ [] <$ string "eps"
+parseDerivation  = try ([] <$ string "eps")
                 <|> trySepBy (ws' *> parseSymbol) (notFollowedBy (ws' *> parseIdentifier *> ws' *> (string ":")))
 
 parseSymbol :: (Stream s m Char) => ParsecT s u m Symbol
