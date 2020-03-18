@@ -1,0 +1,5 @@
+syntax helloDSL (start) {
+    simpleHello   : start -> "hello"
+    helloWithName : start -> "hello" name
+    nameString    : name  -> "name(string)"
+}

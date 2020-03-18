@@ -1,0 +1,11 @@
+
+syntax syntax (Syntax) {
+  DefineSyntax      : Syntax   <- "syntax(string)" "startsWith(string)" Rules
+  RulesCons         : Rules    <- Rule Rules
+  RulesNull         : Rules    <- eps
+  RuleDerive        : Rule     <- "rule(string)" "derive(string)" RuleBody
+  RuleBodyTo        : RuleBody <- "to(string)" RuleTail
+  RuleBodyToEpsilon : RuleBody <- "toEpsilon"
+  RuleTailTo        : RuleTail <- "andThen(string)" RuleTail
+  RuleTailEpsilon   : RuleTail <- eps
+}
