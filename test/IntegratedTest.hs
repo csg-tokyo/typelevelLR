@@ -107,6 +107,11 @@ cleanupHaskell workspace syntaxName = withCurrentDirectory workspace $ do
   runShell ["rm", "*.out"]
   return ()
 
+cleanupScala :: FilePath -> FilePath -> IO ()
+cleanupScala workspace syntaxName = withCurrentDirectory workspace $ do
+  runShell ["rm", "*.out", "*.jar", "*.class"]
+  return ()
+
 -------------------------------------------------------------------------------
 
 buildAndExecuteCpp :: FilePath -> FilePath -> IO (Maybe String)
@@ -137,7 +142,8 @@ buildAndExecuteHs syntaxName target = (`runContT` return) $ callCC $ \exit -> do
 
 buildAndExecuteScala :: FilePath -> FilePath -> IO (Maybe String)
 buildAndExecuteScala syntaxName target = (`runContT` return) $ callCC $ \exit -> do
-  (exitCode1, output, _) <- runShell ["sbt", "run"]
+  _ <- runShell ["scalac", syntaxName <.> "scala", target <.> "scala"]
+  (exitCode1, output, _) <- runShell ["scala", target]
   when (exitCode1 /= ExitSuccess) (exit Nothing)
   return (Just output)
 
@@ -201,8 +207,10 @@ integratedSpec = describe "test examples in exmples/" $ do
             afterAll_ (cleanupCpp workspace syntaxName) $ do
               testCpp workspace syntaxName
         "scala" -> do
+          runIO (putStrLn ("workspace: " ++ workspace ++ ", syntaxName: " ++ syntaxName))
           beforeAll_ (setupScala workspace syntaxName) $ do
-            testScala workspace syntaxName
+            afterAll_ (cleanupScala workspace syntaxName) $ do
+              testScala workspace syntaxName
         _ -> do
           runIO (putStrLn ("warning: unknown lang -- " ++ lang))
 
